@@ -10,9 +10,11 @@ import net.minecraft.client.renderer.IRenderTypeBuffer;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.model.ItemCameraTransforms;
 import net.minecraft.client.renderer.model.ModelRenderer;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.inventory.EquipmentSlotType;
 import net.minecraft.item.ArmorItem;
+import net.minecraft.item.DyeableArmorItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.resources.IResource;
 import net.minecraft.resources.IResourceManager;
@@ -173,28 +175,9 @@ public class AnimatedPlayerGeoRenderer<T extends PlayerEntity> implements IGeoRe
 			ItemStack itemStack = animatable.getHeldItem(Hand.OFF_HAND);
 			Minecraft.getInstance().getItemRenderer().renderItem(itemStack, ItemCameraTransforms.TransformType.THIRD_PERSON_RIGHT_HAND, packedLightIn, packedOverlayIn, stackIn, renderTypeBuffer);
 		} else if (bone.name.startsWith("equipment_handle_hat")) {
-			ItemStack itemStack = animatable.getItemStackFromSlot(EquipmentSlotType.HEAD);
-			stackIn.rotate(
-					new Quaternion(
-							-bone.getRotationX(),
-							-bone.getRotationY(),
-							-bone.getRotationZ(),
-							false
-					)
-			);
-			stackIn.scale(1f / 8, -1f / 8, 1f / 8);
-			stackIn.scale(
-					(float) Math.toDegrees(bone.getRotationX()),
-					(float) Math.toDegrees(bone.getRotationY()),
-					(float) Math.toDegrees(bone.getRotationZ())
-			);
-			stackIn.translate(-0.01f, -0.48f, -0.01);
-			if (itemStack.getItem() instanceof ArmorItem) {
-				String itemName = ((ArmorItem) (itemStack.getItem())).getArmorMaterial().getName();
-				ModelRenderer renderer = new ModelRenderer(64, 32, 0, 0);
-				renderer.addBox(0, 0, 0, 8, 8, 8);
-				renderer.render(stackIn, renderTypeBuffer.getBuffer(RenderType.getArmorCutoutNoCull(new ResourceLocation("minecraft:textures/models/armor/" + itemName + "_layer_1.png"))), packedLightIn, packedOverlayIn);
-			}
+			renderArmor(bone, stackIn, animatable, renderTypeBuffer, packedLightIn, EquipmentSlotType.HEAD, null);
+		} else if (bone.name.startsWith("equipment_handle_chest")) {
+			renderArmor(bone, stackIn, animatable, renderTypeBuffer, packedLightIn, EquipmentSlotType.CHEST, null);
 		} else if (bone.name.startsWith("nametag_handle") && !Minecraft.getInstance().gameSettings.hideGUI) {
 			if (bone.name.endsWith("_self")) {
 				if (animatable.getUniqueID().equals(Minecraft.getInstance().player.getUniqueID())) {
@@ -422,6 +405,45 @@ public class AnimatedPlayerGeoRenderer<T extends PlayerEntity> implements IGeoRe
 				Vector4f vector4f = new Vector4f(vertex.position.getX(), vertex.position.getY(), vertex.position.getZ(), 1.0F);
 				vector4f.transform(matrix4f);
 				bufferIn.addVertex(vector4f.getX(), vector4f.getY(), vector4f.getZ(), red, green, blue, alpha, vertex.textureU, vertex.textureV, packedOverlayIn, packedLightIn, normal.getX(), normal.getY(), normal.getZ());
+			}
+		}
+	}
+	
+	public void renderArmor(GeoBone bone, MatrixStack stackIn, T animatable, IRenderTypeBuffer renderTypeBuffer, int packedLightIn, EquipmentSlotType slotType, Hand side) {
+		int packedOverlayIn = OverlayTexture.NO_OVERLAY;
+		ItemStack itemStack = animatable.getItemStackFromSlot(slotType);
+		if (itemStack.getItem() instanceof ArmorItem) {
+			String itemName = ((ArmorItem) (itemStack.getItem())).getArmorMaterial().getName();
+			ModelRenderer renderer = new ModelRenderer(64, 32, 0, 0);
+			if (slotType.equals(EquipmentSlotType.HEAD)) {
+				stackIn.rotate(new Quaternion(-bone.getRotationX(), -bone.getRotationY(), -bone.getRotationZ(), false));
+				stackIn.scale(1f / 8, -1f / 8, 1f / 8);
+				stackIn.scale((float) Math.toDegrees(bone.getRotationX()), (float) Math.toDegrees(bone.getRotationY()), (float) Math.toDegrees(bone.getRotationZ()));
+				stackIn.translate(-0.01f, -0.48f, -0.01);
+				
+				renderer.addBox("helmet", 0, 0, 0, 8, 8, 8, 0, 0, 0);
+			} else if (slotType.equals(EquipmentSlotType.CHEST)) {
+				stackIn.rotate(new Quaternion(-bone.getRotationX(), -bone.getRotationY(), -bone.getRotationZ(), false));
+				stackIn.scale(1f / 8, 1f / 11, 1f / 4);
+				stackIn.scale((float) Math.toDegrees(bone.getRotationX()), (float) Math.toDegrees(bone.getRotationY()), (float) Math.toDegrees(bone.getRotationZ()));
+				stackIn.translate(-0.01f, -0.48f, -0.01);
+				
+				renderer.addBox("chestplate", 0, 0, 0, 8, 11, 4, 0, 16, 16);
+			}
+			int color;
+			float r = 1;
+			float g = 1;
+			float b = 1;
+			if (itemStack.getItem() instanceof DyeableArmorItem) {
+				color = ((net.minecraft.item.IDyeableArmorItem) itemStack.getItem()).getColor(itemStack);
+				r = (float) (color >> 16 & 255) / 255.0F;
+				g = (float) (color >> 8 & 255) / 255.0F;
+				b = (float) (color & 255) / 255.0F;
+			}
+//			System.out.println(itemName);
+			renderer.render(stackIn, renderTypeBuffer.getBuffer(RenderType.getArmorCutoutNoCull(new ResourceLocation("minecraft:textures/models/armor/" + itemName + "_layer_1.png"))), packedLightIn, packedOverlayIn, r, g, b, 1);
+			if (itemStack.getItem() instanceof DyeableArmorItem) {
+				renderer.render(stackIn, renderTypeBuffer.getBuffer(RenderType.getArmorCutoutNoCull(new ResourceLocation("minecraft:textures/models/armor/" + itemName + "_layer_1_overlay.png"))), packedLightIn, packedOverlayIn);
 			}
 		}
 	}

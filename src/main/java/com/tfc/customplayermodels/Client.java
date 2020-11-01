@@ -124,7 +124,7 @@ public class Client {
 	@Nullable
 	public static RenderType getRenderType(PlayerRenderer renderer, PlayerEntity p_230496_1_, boolean p_230496_2_, boolean p_230496_3_, boolean p_230496_4_) {
 		ResourceLocation resourcelocation = renderer.getEntityTexture((AbstractClientPlayerEntity) p_230496_1_);
-		
+
 //		System.out.println(resourcelocation);
 		
 		if (p_230496_1_.getName().getUnformattedComponentText().equals("Dev"))
