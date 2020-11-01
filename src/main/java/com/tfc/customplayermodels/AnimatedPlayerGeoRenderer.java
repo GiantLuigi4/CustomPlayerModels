@@ -46,8 +46,6 @@ public class AnimatedPlayerGeoRenderer<T extends PlayerEntity> implements IGeoRe
 	public static final HashMap<ResourceLocation, GeoModel> models = new HashMap<>();
 	public static final HashMap<ResourceLocation, String> modelsToLoad = new HashMap<>();
 	
-	private final HashMap<String, ArrayList<Matrix4f>> handles = new HashMap<>();
-	
 	private final GeoModelProvider<T> provider = new GeoModelProvider<T>() {
 		@Override
 		public ResourceLocation getModelLocation(T t) {
@@ -140,74 +138,33 @@ public class AnimatedPlayerGeoRenderer<T extends PlayerEntity> implements IGeoRe
 		return null;
 	}
 	
+	public static ResourceLocation getTexture(ItemStack stack, PlayerEntity entity, EquipmentSlotType slot, String type) {
+		if (stack.getItem() instanceof ArmorItem) {
+			ArmorItem item = (ArmorItem) stack.getItem();
+			String itemName = item.getArmorMaterial().getName();
+			String loc = item.getArmorTexture(stack, entity, slot, type);
+			
+			if (loc == null) {
+				if (slot.equals(EquipmentSlotType.FEET) || slot.equals(EquipmentSlotType.LEGS)) {
+					if (type == null)
+						return new ResourceLocation("minecraft:textures/models/armor/" + itemName + "_layer_2.png");
+					else
+						return new ResourceLocation("minecraft:textures/models/armor/" + itemName + "_layer_2" + type + ".png");
+				} else if (type == null)
+					return new ResourceLocation("minecraft:textures/models/armor/" + itemName + "_layer_1.png");
+				else
+					return new ResourceLocation("minecraft:textures/models/armor/" + itemName + "_layer_1" + type + ".png");
+			} else return new ResourceLocation(loc);
+		}
+		
+		return null;
+	}
+	
 	public void renderLate(GeoModel model, T animatable, MatrixStack stackIn, float ticks, IRenderTypeBuffer renderTypeBuffer, IVertexBuilder bufferIn, int packedLightIn, int packedOverlayIn, float red, float green, float blue, float partialTicks) {
 		stackIn.push();
 		
-		for (GeoBone group : model.topLevelBones) {
+		for (GeoBone group : model.topLevelBones)
 			renderLateBones(group, animatable, stackIn, ticks, renderTypeBuffer, bufferIn, packedLightIn, packedOverlayIn, red, green, blue, partialTicks);
-		}
-		
-		stackIn.pop();
-	}
-	
-	public void renderLateBones(GeoBone bone, T animatable, MatrixStack stackIn, float ticks, IRenderTypeBuffer renderTypeBuffer, IVertexBuilder bufferIn, int packedLightIn, int packedOverlayIn, float red, float green, float blue, float partialTicks) {
-		stackIn.push();
-		
-		RenderUtils.translate(bone, stackIn);
-		RenderUtils.moveToPivot(bone, stackIn);
-		RenderUtils.rotate(bone, stackIn);
-		
-		handleTranslations(bone, animatable, stackIn, bufferIn, packedLightIn, packedOverlayIn, red, green, blue, 1);
-		
-		RenderUtils.scale(bone, stackIn);
-		
-		if (bone.name.startsWith("cape_handle")) {
-			Vector3d motion = animatable.getPositionVec().subtract(new Vector3d(animatable.prevPosX, animatable.prevPosY, animatable.prevPosZ));
-			Client.capes.replace(animatable, (float) MathHelper.lerp(0.1f, Client.capes.get(animatable), Math.abs((20) * motion.distanceTo(new Vector3d(0, 0, 0)) * 10) + (Math.cos(animatable.ticksExisted / 16f) * 2) + 2f));
-			stackIn.rotate(new Quaternion(180 - Client.capes.get(animatable), 0, 0, true));
-			RenderType capeType = Client.getRenderTypeCape(Client.renderer, animatable, false, true, false);
-			if (capeType != null)
-				Client.renderer.getEntityModel().renderCape(stackIn, renderTypeBuffer.getBuffer(capeType), packedLightIn, packedOverlayIn);
-		} else if (bone.name.startsWith("equipment_handle_r")) {
-			ItemStack itemStack = animatable.getHeldItem(Hand.MAIN_HAND);
-			Minecraft.getInstance().getItemRenderer().renderItem(itemStack, ItemCameraTransforms.TransformType.THIRD_PERSON_RIGHT_HAND, packedLightIn, packedOverlayIn, stackIn, renderTypeBuffer);
-		} else if (bone.name.startsWith("equipment_handle_l")) {
-			ItemStack itemStack = animatable.getHeldItem(Hand.OFF_HAND);
-			Minecraft.getInstance().getItemRenderer().renderItem(itemStack, ItemCameraTransforms.TransformType.THIRD_PERSON_RIGHT_HAND, packedLightIn, packedOverlayIn, stackIn, renderTypeBuffer);
-		} else if (bone.name.startsWith("equipment_handle_hat")) {
-			renderArmor(bone, stackIn, animatable, renderTypeBuffer, packedLightIn, EquipmentSlotType.HEAD, null);
-		} else if (bone.name.startsWith("equipment_handle_chest")) {
-			renderArmor(bone, stackIn, animatable, renderTypeBuffer, packedLightIn, EquipmentSlotType.CHEST, null);
-		} else if (bone.name.startsWith("nametag_handle") && !Minecraft.getInstance().gameSettings.hideGUI) {
-			if (bone.name.endsWith("_self")) {
-				if (animatable.getUniqueID().equals(Minecraft.getInstance().player.getUniqueID())) {
-					stackIn.push();
-					stackIn.rotate(new Quaternion(0, -180 + Client.currentRotBody, 0, true));
-					stackIn.translate(0, -2, 0);
-					Client.renderName((AbstractClientPlayerEntity) (animatable), animatable.getDisplayName(), stackIn, renderTypeBuffer, packedLightIn);
-					stackIn.pop();
-				}
-			} else if (bone.name.endsWith("_all")) {
-				stackIn.push();
-				stackIn.rotate(new Quaternion(0, -180 + Client.currentRotBody, 0, true));
-				stackIn.translate(0, -2, 0);
-				Client.renderName((AbstractClientPlayerEntity) (animatable), animatable.getDisplayName(), stackIn, renderTypeBuffer, packedLightIn);
-				stackIn.pop();
-			} else {
-				if (!animatable.getUniqueID().equals(Minecraft.getInstance().player.getUniqueID())) {
-					stackIn.push();
-					stackIn.rotate(new Quaternion(0, -180 + Client.currentRotBody, 0, true));
-					stackIn.translate(0, -2, 0);
-					Client.renderName((AbstractClientPlayerEntity) (animatable), animatable.getDisplayName(), stackIn, renderTypeBuffer, packedLightIn);
-					stackIn.pop();
-				}
-			}
-		}
-		
-		RenderUtils.moveBackFromPivot(bone, stackIn);
-		
-		for (GeoBone bone1 : bone.childBones)
-			renderLateBones(bone1, animatable, stackIn, ticks, renderTypeBuffer, bufferIn, packedLightIn, packedOverlayIn, red, green, blue, partialTicks);
 		
 		stackIn.pop();
 	}
@@ -266,6 +223,69 @@ public class AnimatedPlayerGeoRenderer<T extends PlayerEntity> implements IGeoRe
 		stack.pop();
 	}
 	
+	public void renderLateBones(GeoBone bone, T animatable, MatrixStack stackIn, float ticks, IRenderTypeBuffer renderTypeBuffer, IVertexBuilder bufferIn, int packedLightIn, int packedOverlayIn, float red, float green, float blue, float partialTicks) {
+		stackIn.push();
+		
+		RenderUtils.translate(bone, stackIn);
+		RenderUtils.moveToPivot(bone, stackIn);
+		RenderUtils.rotate(bone, stackIn);
+		
+		handleTranslations(bone, animatable, stackIn, bufferIn, packedLightIn, packedOverlayIn, red, green, blue, 1);
+		
+		RenderUtils.scale(bone, stackIn);
+		
+		if (bone.name.startsWith("cape_handle")) {
+			Vector3d motion = animatable.getPositionVec().subtract(new Vector3d(animatable.prevPosX, animatable.prevPosY, animatable.prevPosZ));
+			Client.capes.replace(animatable, (float) MathHelper.lerp(0.1f, Client.capes.get(animatable), Math.abs((20) * motion.distanceTo(new Vector3d(0, 0, 0)) * 10) + (Math.cos(animatable.ticksExisted / 16f) * 2) + 2f));
+			stackIn.rotate(new Quaternion(180 - Client.capes.get(animatable), 0, 0, true));
+			RenderType capeType = Client.getRenderTypeCape(Client.renderer, animatable, false, true, false);
+			
+			if (capeType != null)
+				Client.renderer.getEntityModel().renderCape(stackIn, renderTypeBuffer.getBuffer(capeType), packedLightIn, packedOverlayIn);
+		} else if (bone.name.startsWith("equipment_handle_r")) {
+			ItemStack itemStack = animatable.getHeldItem(Hand.MAIN_HAND);
+			Minecraft.getInstance().getItemRenderer().renderItem(itemStack, ItemCameraTransforms.TransformType.THIRD_PERSON_RIGHT_HAND, packedLightIn, packedOverlayIn, stackIn, renderTypeBuffer);
+		} else if (bone.name.startsWith("equipment_handle_l")) {
+			ItemStack itemStack = animatable.getHeldItem(Hand.OFF_HAND);
+			Minecraft.getInstance().getItemRenderer().renderItem(itemStack, ItemCameraTransforms.TransformType.THIRD_PERSON_RIGHT_HAND, packedLightIn, packedOverlayIn, stackIn, renderTypeBuffer);
+		} else if (bone.name.startsWith("equipment_handle_hat")) {
+			renderArmor(bone, stackIn, animatable, renderTypeBuffer, packedLightIn, EquipmentSlotType.HEAD, null);
+		} else if (bone.name.startsWith("equipment_handle_chest")) {
+			renderArmor(bone, stackIn, animatable, renderTypeBuffer, packedLightIn, EquipmentSlotType.CHEST, null);
+		} else if (bone.name.startsWith("nametag_handle") && !Minecraft.getInstance().gameSettings.hideGUI) {
+			if (bone.name.endsWith("_self")) {
+				if (animatable.getUniqueID().equals(Minecraft.getInstance().player.getUniqueID())) {
+					stackIn.push();
+					stackIn.rotate(new Quaternion(0, -180 + Client.currentRotBody, 0, true));
+					stackIn.translate(0, -2, 0);
+					Client.renderName((AbstractClientPlayerEntity) (animatable), animatable.getDisplayName(), stackIn, renderTypeBuffer, packedLightIn);
+					stackIn.pop();
+				}
+			} else if (bone.name.endsWith("_all")) {
+				stackIn.push();
+				stackIn.rotate(new Quaternion(0, -180 + Client.currentRotBody, 0, true));
+				stackIn.translate(0, -2, 0);
+				Client.renderName((AbstractClientPlayerEntity) (animatable), animatable.getDisplayName(), stackIn, renderTypeBuffer, packedLightIn);
+				stackIn.pop();
+			} else {
+				if (!animatable.getUniqueID().equals(Minecraft.getInstance().player.getUniqueID())) {
+					stackIn.push();
+					stackIn.rotate(new Quaternion(0, -180 + Client.currentRotBody, 0, true));
+					stackIn.translate(0, -2, 0);
+					Client.renderName((AbstractClientPlayerEntity) (animatable), animatable.getDisplayName(), stackIn, renderTypeBuffer, packedLightIn);
+					stackIn.pop();
+				}
+			}
+		}
+		
+		RenderUtils.moveBackFromPivot(bone, stackIn);
+		
+		for (GeoBone bone1 : bone.childBones)
+			renderLateBones(bone1, animatable, stackIn, ticks, renderTypeBuffer, bufferIn, packedLightIn, packedOverlayIn, red, green, blue, partialTicks);
+		
+		stackIn.pop();
+	}
+	
 	public void handleTranslations(GeoBone bone, T animatable, MatrixStack stack, IVertexBuilder bufferIn, int packedLightIn, int packedOverlayIn, float red, float green, float blue, float alpha) {
 		float limbSwing = MathHelper.lerp(Minecraft.getInstance().getRenderPartialTicks(), animatable.limbSwing - 1, animatable.limbSwing);
 		float limbSwingAmount = MathHelper.lerp(Minecraft.getInstance().getRenderPartialTicks(), animatable.prevLimbSwingAmount, animatable.limbSwingAmount);
@@ -286,6 +306,7 @@ public class AnimatedPlayerGeoRenderer<T extends PlayerEntity> implements IGeoRe
 				stack.rotate(new Quaternion(90, 0, 0, true));
 				stack.translate(0, 0.05f, 0.1f);
 			}
+			
 			if (animatable.isCrouching()) {
 				stack.rotate(new Quaternion(-bodyTiltCrouch, 0, 0, false));
 //				stack.translate(0, 0f, -0.4f);
@@ -385,6 +406,7 @@ public class AnimatedPlayerGeoRenderer<T extends PlayerEntity> implements IGeoRe
 			GeoQuad quad = var12[var14];
 			Vector3f normal = quad.normal.copy();
 			normal.transform(matrix3f);
+			
 			if (normal.getX() < 0.0F) {
 				normal.mul(-1.0F, 1.0F, 1.0F);
 			}
@@ -412,9 +434,10 @@ public class AnimatedPlayerGeoRenderer<T extends PlayerEntity> implements IGeoRe
 	public void renderArmor(GeoBone bone, MatrixStack stackIn, T animatable, IRenderTypeBuffer renderTypeBuffer, int packedLightIn, EquipmentSlotType slotType, Hand side) {
 		int packedOverlayIn = OverlayTexture.NO_OVERLAY;
 		ItemStack itemStack = animatable.getItemStackFromSlot(slotType);
+		
 		if (itemStack.getItem() instanceof ArmorItem) {
-			String itemName = ((ArmorItem) (itemStack.getItem())).getArmorMaterial().getName();
 			ModelRenderer renderer = new ModelRenderer(64, 32, 0, 0);
+			
 			if (slotType.equals(EquipmentSlotType.HEAD)) {
 				stackIn.rotate(new Quaternion(-bone.getRotationX(), -bone.getRotationY(), -bone.getRotationZ(), false));
 				stackIn.scale(1f / 8, -1f / 8, 1f / 8);
@@ -430,21 +453,23 @@ public class AnimatedPlayerGeoRenderer<T extends PlayerEntity> implements IGeoRe
 				
 				renderer.addBox("chestplate", 0, 0, 0, 8, 11, 4, 0, 16, 16);
 			}
+			
 			int color;
 			float r = 1;
 			float g = 1;
 			float b = 1;
+			
 			if (itemStack.getItem() instanceof DyeableArmorItem) {
 				color = ((net.minecraft.item.IDyeableArmorItem) itemStack.getItem()).getColor(itemStack);
 				r = (float) (color >> 16 & 255) / 255.0F;
 				g = (float) (color >> 8 & 255) / 255.0F;
 				b = (float) (color & 255) / 255.0F;
 			}
-//			System.out.println(itemName);
-			renderer.render(stackIn, renderTypeBuffer.getBuffer(RenderType.getArmorCutoutNoCull(new ResourceLocation("minecraft:textures/models/armor/" + itemName + "_layer_1.png"))), packedLightIn, packedOverlayIn, r, g, b, 1);
-			if (itemStack.getItem() instanceof DyeableArmorItem) {
-				renderer.render(stackIn, renderTypeBuffer.getBuffer(RenderType.getArmorCutoutNoCull(new ResourceLocation("minecraft:textures/models/armor/" + itemName + "_layer_1_overlay.png"))), packedLightIn, packedOverlayIn);
-			}
+			
+			renderer.render(stackIn, renderTypeBuffer.getBuffer(RenderType.getArmorCutoutNoCull(Objects.requireNonNull(getTexture(itemStack, animatable, slotType, null)))), packedLightIn, packedOverlayIn, r, g, b, 1);
+			
+			if (itemStack.getItem() instanceof DyeableArmorItem)
+				renderer.render(stackIn, renderTypeBuffer.getBuffer(RenderType.getArmorCutoutNoCull(Objects.requireNonNull(getTexture(itemStack, animatable, slotType, "overlay")))), packedLightIn, packedOverlayIn, r, g, b, 1);
 		}
 	}
 }
