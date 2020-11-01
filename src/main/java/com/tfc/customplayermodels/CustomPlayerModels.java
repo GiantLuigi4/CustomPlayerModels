@@ -28,6 +28,7 @@ public class CustomPlayerModels {
 			MinecraftForge.EVENT_BUS.addListener(Client::onRenderEntity);
 			MinecraftForge.EVENT_BUS.addListener(Client::onTick);
 		}
+		
 		MinecraftForge.EVENT_BUS.addListener(Server::onPlayerJoin);
 		
 		INSTANCE.registerMessage(0, ModelPacket.class, ModelPacket::writePacketData, ModelPacket::new, (packet, contex) -> {

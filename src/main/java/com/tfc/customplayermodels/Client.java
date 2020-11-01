@@ -169,7 +169,6 @@ public class Client {
 	public static void onTick(TickEvent.ClientTickEvent event) {
 		try {
 			if (Minecraft.getInstance().player != null && Minecraft.getInstance().world != null) {
-				
 				File f = new File("cpm/models/active.geo.json");
 				
 				if (!f.exists()) {
