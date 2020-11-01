@@ -116,8 +116,8 @@ public class Client {
 					}
 					
 					drawing = false;
-				} catch (Throwable ignored) {
-					ignored.printStackTrace();
+				} catch (Throwable err) {
+					err.printStackTrace();
 //					System.out.println(event.getEntity().getType());
 					drawing = false;
 					event.setCanceled(false);
@@ -137,13 +137,13 @@ public class Client {
 		if (p_230496_1_.getName().getUnformattedComponentText().equals("Dev"))
 			return RenderType.getEntityTranslucent(new ResourceLocation("minecraft:skins/a002e95d2c83d6f9ee5a9e9ebe03d5e901e1012c"));
 		
-		if (p_230496_3_) {
+		if (p_230496_3_)
+			return RenderType.getEntityCutoutNoCull(resourcelocation);
+//			return RenderType.getEntityCutoutNoCull(new ResourceLocation("minecraft:textures/entity/phantom.png"));
+		else if (p_230496_2_)
 			return RenderType.getEntityTranslucent(resourcelocation);
-		} else if (p_230496_2_) {
-			return RenderType.getEntityTranslucent(resourcelocation);
-		} else {
+		else
 			return p_230496_4_ ? RenderType.getEntityTranslucent(resourcelocation, true) : null;
-		}
 	}
 	
 	@Nullable
@@ -154,13 +154,12 @@ public class Client {
 //			return RenderType.getEntityTranslucent(new ResourceLocation("cpm:textures/cape/testcape/testcape.png"));
 		
 		if (resourcelocation != null) {
-			if (p_230496_3_) {
+			if (p_230496_3_)
 				return RenderType.getEntityTranslucent(resourcelocation);
-			} else if (p_230496_2_) {
+			else if (p_230496_2_)
 				return RenderType.getEntityTranslucent(resourcelocation);
-			} else {
+			else
 				return p_230496_4_ ? RenderType.getEntityTranslucent(resourcelocation, true) : null;
-			}
 		} else {
 			return null;
 		}
@@ -228,9 +227,8 @@ public class Client {
 			float f2 = (float) (-fontrenderer.getStringPropertyWidth(displayNameIn) / 2);
 			fontrenderer.func_243247_a(displayNameIn, f2, (float) i, 553648127, false, matrix4f, bufferIn, flag, j, packedLightIn);
 			
-			if (flag) {
+			if (flag)
 				fontrenderer.func_243247_a(displayNameIn, f2, (float) i, -1, false, matrix4f, bufferIn, false, 0, packedLightIn);
-			}
 			
 			matrixStackIn.pop();
 		}

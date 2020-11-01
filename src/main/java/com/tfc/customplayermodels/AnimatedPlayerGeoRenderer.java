@@ -145,15 +145,15 @@ public class AnimatedPlayerGeoRenderer<T extends PlayerEntity> implements IGeoRe
 			String loc = item.getArmorTexture(stack, entity, slot, type);
 			
 			if (loc == null) {
-				if (slot.equals(EquipmentSlotType.FEET) || slot.equals(EquipmentSlotType.LEGS)) {
+				if (slot.equals(EquipmentSlotType.LEGS)) {
 					if (type == null)
 						return new ResourceLocation("minecraft:textures/models/armor/" + itemName + "_layer_2.png");
 					else
-						return new ResourceLocation("minecraft:textures/models/armor/" + itemName + "_layer_2" + type + ".png");
+						return new ResourceLocation("minecraft:textures/models/armor/" + itemName + "_layer_2_" + type + ".png");
 				} else if (type == null)
 					return new ResourceLocation("minecraft:textures/models/armor/" + itemName + "_layer_1.png");
 				else
-					return new ResourceLocation("minecraft:textures/models/armor/" + itemName + "_layer_1" + type + ".png");
+					return new ResourceLocation("minecraft:textures/models/armor/" + itemName + "_layer_1_" + type + ".png");
 			} else return new ResourceLocation(loc);
 		}
 		
@@ -182,13 +182,11 @@ public class AnimatedPlayerGeoRenderer<T extends PlayerEntity> implements IGeoRe
 		
 		this.renderLate(model, animatable, matrixStackIn, partialTicks, renderTypeBuffer, vertexBuilder, packedLightIn, packedOverlayIn, red, green, blue, alpha);
 		
-		if (vertexBuilder == null) {
+		if (vertexBuilder == null)
 			vertexBuilder = renderTypeBuffer.getBuffer(type);
-		}
 		
-		for (GeoBone group : model.topLevelBones) {
+		for (GeoBone group : model.topLevelBones)
 			this.renderRecursively(group, animatable, matrixStackIn, vertexBuilder, packedLightIn, packedOverlayIn, red, green, blue, alpha);
-		}
 		
 		matrixStackIn.pop();
 	}
@@ -205,7 +203,7 @@ public class AnimatedPlayerGeoRenderer<T extends PlayerEntity> implements IGeoRe
 		RenderUtils.moveBackFromPivot(bone, stack);
 		
 		if (!bone.isHidden) {
-			Iterator var10 = bone.childCubes.iterator();
+			Iterator<?> var10 = bone.childCubes.iterator();
 			
 			while (var10.hasNext()) {
 				GeoCube cube = (GeoCube) var10.next();
@@ -233,8 +231,21 @@ public class AnimatedPlayerGeoRenderer<T extends PlayerEntity> implements IGeoRe
 		handleTranslations(bone, animatable, stackIn, bufferIn, packedLightIn, packedOverlayIn, red, green, blue, 1);
 		
 		RenderUtils.scale(bone, stackIn);
+
+//		System.out.println(bone.name);
 		
-		if (bone.name.startsWith("cape_handle")) {
+		if (bone.name.startsWith("equipment_handle_leg")) {
+			renderArmor(bone, stackIn, animatable, renderTypeBuffer, packedLightIn, EquipmentSlotType.LEGS, null);
+		}
+		if (bone.name.startsWith("equipment_handle_foot")) {
+			renderArmor(bone, stackIn, animatable, renderTypeBuffer, packedLightIn, EquipmentSlotType.FEET, null);
+		} else if (bone.name.startsWith("equipment_handle_hat")) {
+			renderArmor(bone, stackIn, animatable, renderTypeBuffer, packedLightIn, EquipmentSlotType.HEAD, null);
+		} else if (bone.name.startsWith("equipment_handle_chest")) {
+			renderArmor(bone, stackIn, animatable, renderTypeBuffer, packedLightIn, EquipmentSlotType.CHEST, null);
+		} else if (bone.name.startsWith("equipment_handle_arm")) {
+			renderArmor(bone, stackIn, animatable, renderTypeBuffer, packedLightIn, EquipmentSlotType.CHEST, Hand.MAIN_HAND);
+		} else if (bone.name.startsWith("cape_handle")) {
 			Vector3d motion = animatable.getPositionVec().subtract(new Vector3d(animatable.prevPosX, animatable.prevPosY, animatable.prevPosZ));
 			Client.capes.replace(animatable, (float) MathHelper.lerp(0.1f, Client.capes.get(animatable), Math.abs((20) * motion.distanceTo(new Vector3d(0, 0, 0)) * 10) + (Math.cos(animatable.ticksExisted / 16f) * 2) + 2f));
 			stackIn.rotate(new Quaternion(180 - Client.capes.get(animatable), 0, 0, true));
@@ -248,10 +259,6 @@ public class AnimatedPlayerGeoRenderer<T extends PlayerEntity> implements IGeoRe
 		} else if (bone.name.startsWith("equipment_handle_l")) {
 			ItemStack itemStack = animatable.getHeldItem(Hand.OFF_HAND);
 			Minecraft.getInstance().getItemRenderer().renderItem(itemStack, ItemCameraTransforms.TransformType.THIRD_PERSON_RIGHT_HAND, packedLightIn, packedOverlayIn, stackIn, renderTypeBuffer);
-		} else if (bone.name.startsWith("equipment_handle_hat")) {
-			renderArmor(bone, stackIn, animatable, renderTypeBuffer, packedLightIn, EquipmentSlotType.HEAD, null);
-		} else if (bone.name.startsWith("equipment_handle_chest")) {
-			renderArmor(bone, stackIn, animatable, renderTypeBuffer, packedLightIn, EquipmentSlotType.CHEST, null);
 		} else if (bone.name.startsWith("nametag_handle") && !Minecraft.getInstance().gameSettings.hideGUI) {
 			if (bone.name.endsWith("_self")) {
 				if (animatable.getUniqueID().equals(Minecraft.getInstance().player.getUniqueID())) {
@@ -267,14 +274,12 @@ public class AnimatedPlayerGeoRenderer<T extends PlayerEntity> implements IGeoRe
 				stackIn.translate(0, -2, 0);
 				Client.renderName((AbstractClientPlayerEntity) (animatable), animatable.getDisplayName(), stackIn, renderTypeBuffer, packedLightIn);
 				stackIn.pop();
-			} else {
-				if (!animatable.getUniqueID().equals(Minecraft.getInstance().player.getUniqueID())) {
-					stackIn.push();
-					stackIn.rotate(new Quaternion(0, -180 + Client.currentRotBody, 0, true));
-					stackIn.translate(0, -2, 0);
-					Client.renderName((AbstractClientPlayerEntity) (animatable), animatable.getDisplayName(), stackIn, renderTypeBuffer, packedLightIn);
-					stackIn.pop();
-				}
+			} else if (!animatable.getUniqueID().equals(Minecraft.getInstance().player.getUniqueID())) {
+				stackIn.push();
+				stackIn.rotate(new Quaternion(0, -180 + Client.currentRotBody, 0, true));
+				stackIn.translate(0, -2, 0);
+				Client.renderName((AbstractClientPlayerEntity) (animatable), animatable.getDisplayName(), stackIn, renderTypeBuffer, packedLightIn);
+				stackIn.pop();
 			}
 		}
 		
@@ -363,8 +368,7 @@ public class AnimatedPlayerGeoRenderer<T extends PlayerEntity> implements IGeoRe
 			float f1 = MathHelper.sin((1.0F - (1.0F - attackSwing) * (1.0F - attackSwing)) * (float) Math.PI);
 			float rotZ = 0.0F;
 			float rotY = -(0.1F - f * 0.6F);
-			float f2 = (animatable.getHeldItem(Hand.MAIN_HAND).isEmpty() ? 0 : 0.1F);
-			float rotX = f2;
+			float rotX = (animatable.getHeldItem(Hand.MAIN_HAND).isEmpty() ? 0 : 0.1F);
 			rotX += (MathHelper.cos(animatable.ticksExisted * 0.09F) * 0.05F + 0.05F);
 			rotZ += (MathHelper.sin(animatable.ticksExisted * 0.067F) * 0.05F);
 			
@@ -379,8 +383,7 @@ public class AnimatedPlayerGeoRenderer<T extends PlayerEntity> implements IGeoRe
 		} else if (bone.name.startsWith("left_arm")) {
 			float rotZ = 0.0F;
 			float rotY = 0;
-			float f2 = (animatable.getHeldItem(Hand.OFF_HAND).isEmpty() ? 0 : 0.1F);
-			float rotX = f2;
+			float rotX = (animatable.getHeldItem(Hand.OFF_HAND).isEmpty() ? 0 : 0.1F);
 			rotX += -(MathHelper.cos(animatable.ticksExisted * 0.09F) * 0.05F + 0.05F);
 			rotZ += -(MathHelper.sin(animatable.ticksExisted * 0.067F) * 0.05F);
 			
@@ -400,10 +403,8 @@ public class AnimatedPlayerGeoRenderer<T extends PlayerEntity> implements IGeoRe
 		Matrix3f matrix3f = stack.getLast().getNormal();
 		Matrix4f matrix4f = stack.getLast().getMatrix();
 		GeoQuad[] var12 = cube.quads;
-		int var13 = var12.length;
 		
-		for (int var14 = 0; var14 < var13; ++var14) {
-			GeoQuad quad = var12[var14];
+		for (GeoQuad quad : var12) {
 			Vector3f normal = quad.normal.copy();
 			normal.transform(matrix3f);
 			
@@ -420,10 +421,8 @@ public class AnimatedPlayerGeoRenderer<T extends PlayerEntity> implements IGeoRe
 			}
 			
 			GeoVertex[] var17 = quad.vertices;
-			int var18 = var17.length;
 			
-			for (int var19 = 0; var19 < var18; ++var19) {
-				GeoVertex vertex = var17[var19];
+			for (GeoVertex vertex : var17) {
 				Vector4f vector4f = new Vector4f(vertex.position.getX(), vertex.position.getY(), vertex.position.getZ(), 1.0F);
 				vector4f.transform(matrix4f);
 				bufferIn.addVertex(vector4f.getX(), vector4f.getY(), vector4f.getZ(), red, green, blue, alpha, vertex.textureU, vertex.textureV, packedOverlayIn, packedLightIn, normal.getX(), normal.getY(), normal.getZ());
@@ -445,22 +444,42 @@ public class AnimatedPlayerGeoRenderer<T extends PlayerEntity> implements IGeoRe
 				stackIn.translate(-0.01f, -0.48f, -0.01);
 				
 				renderer.addBox("helmet", 0, 0, 0, 8, 8, 8, 0, 0, 0);
+			} else if (side != null && slotType.equals(EquipmentSlotType.CHEST)) {
+				stackIn.rotate(new Quaternion(-bone.getRotationX(), -bone.getRotationY(), -bone.getRotationZ(), false));
+				stackIn.scale(1f / 4, 1f / 16, 1f / 4);
+				stackIn.scale((float) Math.toDegrees(bone.getRotationX()), (float) Math.toDegrees(bone.getRotationY()), (float) Math.toDegrees(bone.getRotationZ()));
+				stackIn.translate(-0.01f, -0.6775f, -0.01);
+				
+				renderer.addBox("arm", 0, 0, 0, 4, 16, 4, 0, 40, 16);
 			} else if (slotType.equals(EquipmentSlotType.CHEST)) {
 				stackIn.rotate(new Quaternion(-bone.getRotationX(), -bone.getRotationY(), -bone.getRotationZ(), false));
 				stackIn.scale(1f / 8, 1f / 11, 1f / 4);
 				stackIn.scale((float) Math.toDegrees(bone.getRotationX()), (float) Math.toDegrees(bone.getRotationY()), (float) Math.toDegrees(bone.getRotationZ()));
-				stackIn.translate(-0.01f, -0.48f, -0.01);
+				stackIn.translate(-0.01f, -0.6775f, -0.01);
 				
 				renderer.addBox("chestplate", 0, 0, 0, 8, 11, 4, 0, 16, 16);
+			} else if (slotType.equals(EquipmentSlotType.LEGS)) {
+				stackIn.rotate(new Quaternion(-bone.getRotationX(), -bone.getRotationY(), -bone.getRotationZ(), false));
+				stackIn.scale(1f / 4, 1f / 16, 1f / 4);
+				stackIn.scale((float) Math.toDegrees(bone.getRotationX()), (float) Math.toDegrees(bone.getRotationY()), (float) Math.toDegrees(bone.getRotationZ()));
+				stackIn.translate(-0.01f, -0.6775f, -0.01);
+				
+				renderer.addBox("pants", 0, 0, 0, 4, 16, 4, 0, 0, 16);
+			} else if (slotType.equals(EquipmentSlotType.FEET)) {
+				stackIn.rotate(new Quaternion(-bone.getRotationX(), -bone.getRotationY(), -bone.getRotationZ(), false));
+				stackIn.scale(1f / 4, 1f / -12, 1f / 4);
+				stackIn.scale((float) Math.toDegrees(bone.getRotationX()), (float) Math.toDegrees(bone.getRotationY()), (float) Math.toDegrees(bone.getRotationZ()));
+				stackIn.translate(-0.01f, -0.6775f, -0.01);
+				
+				renderer.addBox("boots", 0, 0, 0, 4, 12, 4, 0, 0, 16);
 			}
 			
-			int color;
 			float r = 1;
 			float g = 1;
 			float b = 1;
 			
 			if (itemStack.getItem() instanceof DyeableArmorItem) {
-				color = ((net.minecraft.item.IDyeableArmorItem) itemStack.getItem()).getColor(itemStack);
+				int color = ((net.minecraft.item.IDyeableArmorItem) itemStack.getItem()).getColor(itemStack);
 				r = (float) (color >> 16 & 255) / 255.0F;
 				g = (float) (color >> 8 & 255) / 255.0F;
 				b = (float) (color & 255) / 255.0F;
@@ -469,7 +488,9 @@ public class AnimatedPlayerGeoRenderer<T extends PlayerEntity> implements IGeoRe
 			renderer.render(stackIn, renderTypeBuffer.getBuffer(RenderType.getArmorCutoutNoCull(Objects.requireNonNull(getTexture(itemStack, animatable, slotType, null)))), packedLightIn, packedOverlayIn, r, g, b, 1);
 			
 			if (itemStack.getItem() instanceof DyeableArmorItem)
-				renderer.render(stackIn, renderTypeBuffer.getBuffer(RenderType.getArmorCutoutNoCull(Objects.requireNonNull(getTexture(itemStack, animatable, slotType, "overlay")))), packedLightIn, packedOverlayIn, r, g, b, 1);
+				renderer.render(stackIn, renderTypeBuffer.getBuffer(RenderType.getArmorCutoutNoCull(Objects.requireNonNull(getTexture(itemStack, animatable, slotType, "overlay")))), packedLightIn, packedOverlayIn, 1, 1, 1, 1);
+			if (itemStack.hasEffect())
+				renderer.render(stackIn, renderTypeBuffer.getBuffer(RenderType.getArmorEntityGlint()), packedLightIn, packedOverlayIn, 1, 1, 1, 1);
 		}
 	}
 }
