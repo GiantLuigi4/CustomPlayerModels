@@ -50,6 +50,7 @@ public class Client {
 				
 				if (!rotX.containsKey(event.getPlayer()))
 					rotX.put(event.getPlayer(), event.getPlayer().getPitch(event.getPartialRenderTick()));
+				
 				if (!capes.containsKey(event.getPlayer())) capes.put(event.getPlayer(), 0f);
 				
 				event.setCanceled(event.isCancelable());
@@ -57,17 +58,22 @@ public class Client {
 				
 				if (xRot <= event.getPlayer().getYaw(event.getPartialRenderTick()) - 45)
 					xRot = event.getPlayer().getYaw(event.getPartialRenderTick()) - 45;
+				
 				if (xRot >= event.getPlayer().getYaw(event.getPartialRenderTick()) + 45)
 					xRot = event.getPlayer().getYaw(event.getPartialRenderTick()) + 45;
+				
 				if (event.getPlayer().isSwingInProgress)
 					xRot = MathHelper.lerp(0.25f, xRot, event.getPlayer().getYaw(event.getPartialRenderTick()));
+				
 				if (event.getPlayer().moveForward != 0)
 					xRot = MathHelper.lerp(0.1f, xRot, event.getPlayer().getYaw(event.getPartialRenderTick()));
+				
 				if (event.getPlayer().moveStrafing != 0)
 					xRot = MathHelper.lerp(0.1f, xRot, (-45 * event.getPlayer().moveStrafing) + event.getPlayer().getYaw(event.getPartialRenderTick()));
 				
 				if (event.getPlayer().isPassenger())
 					xRot = event.getPlayer().getRidingEntity().getYaw(event.getPartialRenderTick());
+				
 				if (event.getPlayer().isElytraFlying())
 					xRot = event.getPlayer().getYaw(event.getPartialRenderTick());
 
@@ -108,6 +114,7 @@ public class Client {
 					} else {
 						event.setCanceled(false);
 					}
+					
 					drawing = false;
 				} catch (Throwable ignored) {
 					ignored.printStackTrace();
@@ -164,15 +171,18 @@ public class Client {
 			if (Minecraft.getInstance().player != null && Minecraft.getInstance().world != null) {
 				
 				File f = new File("cpm/models/active.geo.json");
+				
 				if (!f.exists()) {
 					f.getParentFile().mkdirs();
 					f.createNewFile();
 				}
+				
 				InputStream stream = new FileInputStream(f);
 				byte[] bytes = new byte[stream.available()];
 				stream.read(bytes);
 				stream.close();
 				String newModel = new String(bytes);
+				
 				if (!currentModel.equals(newModel)) {
 					CustomPlayerModels.INSTANCE.sendToServer(new ModelPacket(newModel, Minecraft.getInstance().player.getUniqueID()));
 					currentModel = newModel;
@@ -185,21 +195,25 @@ public class Client {
 	public static void renderName(AbstractClientPlayerEntity entityIn, ITextComponent displayNameIn, MatrixStack matrixStackIn, IRenderTypeBuffer bufferIn, int packedLightIn) {
 		double d0 = Client.renderer.getRenderManager().squareDistanceTo(entityIn);
 		matrixStackIn.push();
+		
 		if (d0 < 100.0D) {
 			Scoreboard scoreboard = entityIn.getWorldScoreboard();
 			ScoreObjective scoreobjective = scoreboard.getObjectiveInDisplaySlot(2);
+			
 			if (scoreobjective != null) {
 				Score score = scoreboard.getOrCreateScore(entityIn.getScoreboardName(), scoreobjective);
 				superRenderName(entityIn, (new StringTextComponent(Integer.toString(score.getScorePoints()))).appendString(" ").append(scoreobjective.getDisplayName()), matrixStackIn, bufferIn, packedLightIn);
 				matrixStackIn.translate(0.0D, (double) (9.0F * 1.15F * 0.025F), 0.0D);
 			}
 		}
+		
 		superRenderName(entityIn, displayNameIn, matrixStackIn, bufferIn, packedLightIn);
 		matrixStackIn.pop();
 	}
 	
 	public static void superRenderName(AbstractClientPlayerEntity entityIn, ITextComponent displayNameIn, MatrixStack matrixStackIn, IRenderTypeBuffer bufferIn, int packedLightIn) {
 		double d0 = Client.renderer.getRenderManager().squareDistanceTo(entityIn);
+		
 		if (!(d0 > 4096.0D)) {
 			boolean flag = !entityIn.isDiscrete();
 			float f = entityIn.getHeight() + 0.5F;
@@ -214,6 +228,7 @@ public class Client {
 			FontRenderer fontrenderer = Client.renderer.getFontRendererFromRenderManager();
 			float f2 = (float) (-fontrenderer.getStringPropertyWidth(displayNameIn) / 2);
 			fontrenderer.func_243247_a(displayNameIn, f2, (float) i, 553648127, false, matrix4f, bufferIn, flag, j, packedLightIn);
+			
 			if (flag) {
 				fontrenderer.func_243247_a(displayNameIn, f2, (float) i, -1, false, matrix4f, bufferIn, false, 0, packedLightIn);
 			}
