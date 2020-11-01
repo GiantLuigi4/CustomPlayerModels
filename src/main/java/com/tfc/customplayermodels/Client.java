@@ -125,10 +125,10 @@ public class Client {
 	public static RenderType getRenderType(PlayerRenderer renderer, PlayerEntity p_230496_1_, boolean p_230496_2_, boolean p_230496_3_, boolean p_230496_4_) {
 		ResourceLocation resourcelocation = renderer.getEntityTexture((AbstractClientPlayerEntity) p_230496_1_);
 		
-		System.out.println(resourcelocation);
+//		System.out.println(resourcelocation);
 		
 		if (p_230496_1_.getName().getUnformattedComponentText().equals("Dev"))
-			return RenderType.getEntityTranslucent(new ResourceLocation("minecraft:skins/4f509dee86451eb3b8ea0a477442e62fcc9e0595"));
+			return RenderType.getEntityTranslucent(new ResourceLocation("minecraft:skins/a002e95d2c83d6f9ee5a9e9ebe03d5e901e1012c"));
 		
 		if (p_230496_3_) {
 			return RenderType.getEntityTranslucent(resourcelocation);
@@ -142,9 +142,9 @@ public class Client {
 	@Nullable
 	public static RenderType getRenderTypeCape(PlayerRenderer renderer, PlayerEntity p_230496_1_, boolean p_230496_2_, boolean p_230496_3_, boolean p_230496_4_) {
 		ResourceLocation resourcelocation = ((AbstractClientPlayerEntity) p_230496_1_).getLocationCape();
-		
-		if (p_230496_1_.getName().getUnformattedComponentText().equals("GiantLuigi4"))
-			return RenderType.getEntityTranslucent(new ResourceLocation("cpm:textures/cape/testcape/testcape.png"));
+
+//		if (p_230496_1_.getName().getUnformattedComponentText().equals("GiantLuigi4"))
+//			return RenderType.getEntityTranslucent(new ResourceLocation("cpm:textures/cape/testcape/testcape.png"));
 		
 		if (resourcelocation != null) {
 			if (p_230496_3_) {

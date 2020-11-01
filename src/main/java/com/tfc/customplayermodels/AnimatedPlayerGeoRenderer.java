@@ -9,7 +9,10 @@ import net.minecraft.client.entity.player.AbstractClientPlayerEntity;
 import net.minecraft.client.renderer.IRenderTypeBuffer;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.model.ItemCameraTransforms;
+import net.minecraft.client.renderer.model.ModelRenderer;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.inventory.EquipmentSlotType;
+import net.minecraft.item.ArmorItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.resources.IResource;
 import net.minecraft.resources.IResourceManager;
@@ -169,6 +172,29 @@ public class AnimatedPlayerGeoRenderer<T extends PlayerEntity> implements IGeoRe
 		} else if (bone.name.startsWith("equipment_handle_l")) {
 			ItemStack itemStack = animatable.getHeldItem(Hand.OFF_HAND);
 			Minecraft.getInstance().getItemRenderer().renderItem(itemStack, ItemCameraTransforms.TransformType.THIRD_PERSON_RIGHT_HAND, packedLightIn, packedOverlayIn, stackIn, renderTypeBuffer);
+		} else if (bone.name.startsWith("equipment_handle_hat")) {
+			ItemStack itemStack = animatable.getItemStackFromSlot(EquipmentSlotType.HEAD);
+			stackIn.rotate(
+					new Quaternion(
+							-bone.getRotationX(),
+							-bone.getRotationY(),
+							-bone.getRotationZ(),
+							false
+					)
+			);
+			stackIn.scale(1f / 8, -1f / 8, 1f / 8);
+			stackIn.scale(
+					(float) Math.toDegrees(bone.getRotationX()),
+					(float) Math.toDegrees(bone.getRotationY()),
+					(float) Math.toDegrees(bone.getRotationZ())
+			);
+			stackIn.translate(-0.01f, -0.48f, -0.01);
+			if (itemStack.getItem() instanceof ArmorItem) {
+				String itemName = ((ArmorItem) (itemStack.getItem())).getArmorMaterial().getName();
+				ModelRenderer renderer = new ModelRenderer(64, 32, 0, 0);
+				renderer.addBox(0, 0, 0, 8, 8, 8);
+				renderer.render(stackIn, renderTypeBuffer.getBuffer(RenderType.getArmorCutoutNoCull(new ResourceLocation("minecraft:textures/models/armor/" + itemName + "_layer_1.png"))), packedLightIn, packedOverlayIn);
+			}
 		} else if (bone.name.startsWith("nametag_handle") && !Minecraft.getInstance().gameSettings.hideGUI) {
 			if (bone.name.endsWith("_self")) {
 				if (animatable.getUniqueID().equals(Minecraft.getInstance().player.getUniqueID())) {
