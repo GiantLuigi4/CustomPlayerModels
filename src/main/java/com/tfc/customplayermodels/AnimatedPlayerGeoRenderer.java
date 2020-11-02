@@ -25,7 +25,6 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.vector.*;
 import software.bernie.geckolib.core.controller.AnimationController;
-import software.bernie.geckolib.core.event.predicate.AnimationEvent;
 import software.bernie.geckolib.core.processor.IBone;
 import software.bernie.geckolib.core.snapshot.BoneSnapshot;
 import software.bernie.geckolib.file.GeoModelLoader;
@@ -33,7 +32,6 @@ import software.bernie.geckolib.geo.render.built.*;
 import software.bernie.geckolib.model.provider.GeoModelProvider;
 import software.bernie.geckolib.renderers.geo.IGeoRenderer;
 import software.bernie.geckolib.util.RenderUtils;
-import software.bernie.shadowed.eliotlash.molang.MolangParser;
 
 import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
@@ -229,26 +227,10 @@ public class AnimatedPlayerGeoRenderer<T extends AnimatedPlayer> implements IGeo
 //		System.out.println(model.getClass());
 		
 		AnimationController<T> controller = (AnimationController<T>) animatable.getFactory().getOrCreateAnimationData(animatable.getUniqueID().hashCode()).getAnimationControllers().get("controller");
-		ArrayList<IBone> bones = new ArrayList<>();
-		AnimationEvent<T> event = new AnimationEvent<T>(animatable, animatable.getPlayer().limbSwing, animatable.getPlayer().limbSwingAmount, partialTicks, false, new ArrayList<>());
-		event.setController(controller);
-		for (GeoBone bone : model.topLevelBones)
-			toIBoneArray(
-					bone,
-					new ArrayList<>(),
-					animatable.getFactory().getOrCreateAnimationData(animatable.getUniqueID().hashCode()).getBoneSnapshotCollection()
-			);
-//		event.setController(controller);
 		try {
-			controller.process(
-					animatable.getPlayer().ticksExisted, event, bones,
-					animatable.getFactory().getOrCreateAnimationData(animatable.getUniqueID().hashCode()).getBoneSnapshotCollection(),
-					new MolangParser(), true
-			);
 			animatedPlayerGeoModel.setModel(model);
-			animatedPlayerGeoModel.setAnimation(animatable.getFactory().getOrCreateAnimationData(animatable.getUniqueID().hashCode()).getAnimationControllers().get("controller").getCurrentAnimation());
+			animatedPlayerGeoModel.setAnimation(controller.getCurrentAnimation());
 			animatedPlayerGeoModel.setLivingAnimations(animatable, animatable.getUniqueID().hashCode());
-			animatedPlayerGeoModel.getAnimationProcessor().tickAnimation(animatable, animatable.getUniqueID().hashCode(), animatable.getPlayer().ticksExisted, event, new MolangParser(), true);
 		} catch (Throwable ignored) {
 			StringBuilder errStr = new StringBuilder();
 			errStr.append(ignored.getMessage()).append("\n");
