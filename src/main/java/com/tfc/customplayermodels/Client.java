@@ -35,7 +35,7 @@ public class Client {
 	
 	public static final HashMap<PlayerEntity, Float> capes = new HashMap<>();
 	private static final HashMap<PlayerEntity, Float> rotX = new HashMap<>();
-	private static final HashMap<PlayerEntity, IAnimatedPlayer> animatedPlayers = new HashMap<>();
+	private static final HashMap<PlayerEntity, AnimatedPlayer> animatedPlayers = new HashMap<>();
 	
 	public static float currentRotBody = 0;
 	public static float partialTicks = 0;
@@ -57,7 +57,7 @@ public class Client {
 				if (!capes.containsKey(event.getPlayer())) capes.put(event.getPlayer(), 0f);
 				
 				if (!animatedPlayers.containsKey(event.getPlayer()))
-					animatedPlayers.put(event.getPlayer(), new IAnimatedPlayer(event.getPlayer()));
+					animatedPlayers.put(event.getPlayer(), new AnimatedPlayer(event.getPlayer()));
 				
 				event.setCanceled(event.isCancelable());
 				float xRot = rotX.get(event.getPlayer());
@@ -100,26 +100,28 @@ public class Client {
 						event.getMatrixStack().translate(0, -1.5f, 0);
 					}
 					
-					if (!AnimatedPlayerGeoRenderer.modelsToLoad.get(new ResourceLocation("cpm", event.getPlayer().getUniqueID().toString())).equals("")) {
-						if (AnimatedPlayerGeoRenderer.modelsToLoad.get(new ResourceLocation("cpm", event.getPlayer().getUniqueID().toString())).startsWith("{")) {
-							AnimatedPlayerGeoRenderer.INSTANCE.render(
-									AnimatedPlayerGeoRenderer.INSTANCE.getGeoModelProvider().getModel((new ResourceLocation("cpm:" + event.getPlayer().getUniqueID().toString()))),
-									animatedPlayers.get(event.getPlayer()),
-									event.getPartialRenderTick(),
-									getRenderType(event.getRenderer(), event.getPlayer(), false, true, false),
-									event.getMatrixStack(),
-									event.getBuffers(),
-									null,
-									event.getLight(),
-									OverlayTexture.NO_OVERLAY,
-									1, 1, 1, 1
-							);
-						} else {
+					//TODO: minify if statement
+					if (AnimatedPlayerGeoRenderer.modelsToLoad.containsKey(new ResourceLocation("cpm", event.getPlayer().getUniqueID().toString()))) {
+						if (!AnimatedPlayerGeoRenderer.modelsToLoad.get(new ResourceLocation("cpm", event.getPlayer().getUniqueID().toString())).equals("")) {
+							if (AnimatedPlayerGeoRenderer.modelsToLoad.get(new ResourceLocation("cpm", event.getPlayer().getUniqueID().toString())).startsWith("{")) {
+								AnimatedPlayerGeoRenderer.INSTANCE.render(
+										AnimatedPlayerGeoRenderer.INSTANCE.getGeoModelProvider().getModel((new ResourceLocation("cpm:" + event.getPlayer().getUniqueID().toString()))),
+										animatedPlayers.get(event.getPlayer()),
+										event.getPartialRenderTick(),
+										getRenderType(event.getRenderer(), event.getPlayer(), false, true, false),
+										event.getMatrixStack(),
+										event.getBuffers(),
+										null,
+										event.getLight(),
+										OverlayTexture.NO_OVERLAY,
+										1, 1, 1, 1
+								);
+							} else
+								event.setCanceled(false);
+						} else
 							event.setCanceled(false);
-						}
-					} else {
+					} else
 						event.setCanceled(false);
-					}
 					
 					drawing = false;
 				} catch (Throwable err) {
@@ -196,14 +198,27 @@ public class Client {
 				stream.read(bytes);
 				stream.close();
 				String newModel = new String(bytes);
+				File f1 = new File("cpm/models/" + properties + ".animation.json");
+				String anim;
+				if (f1.exists()) {
+					InputStream stream1 = new FileInputStream(f1);
+					byte[] bytes1 = new byte[stream1.available()];
+					stream1.read(bytes1);
+					stream1.close();
+					anim = new String(bytes1);
+				} else {
+					anim = "{\"format_version\":\"1.8.0\",\"animations\":{\"animation.idle\":{\"loop\":true}}}";
+				}
 				
 				String texture = reader.getValue("TexturePointer");
 				if (texture != null) {
 					newModel = "{\"_texture_\":\"" + texture + "\"" + newModel.substring(1);
 				}
+				newModel = newModel.replace(" ", "").replace("\t", "").replace("\n", "");
+				anim = anim.replace(" ", "").replace("\t", "").replace("\n", "");
 				
-				if (!currentModel.equals(newModel)) {
-					CustomPlayerModels.INSTANCE.sendToServer(new ModelPacket(newModel, Minecraft.getInstance().player.getUniqueID()));
+				if (!currentModel.equals(newModel) || true) {
+					CustomPlayerModels.INSTANCE.sendToServer(new ModelPacket(newModel, Minecraft.getInstance().player.getUniqueID(), anim));
 					currentModel = newModel;
 				}
 			}
