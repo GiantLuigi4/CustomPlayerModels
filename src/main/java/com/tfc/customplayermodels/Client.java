@@ -35,6 +35,7 @@ public class Client {
 	
 	public static final HashMap<PlayerEntity, Float> capes = new HashMap<>();
 	private static final HashMap<PlayerEntity, Float> rotX = new HashMap<>();
+	private static final HashMap<PlayerEntity, IAnimatedPlayer> animatedPlayers = new HashMap<>();
 	
 	public static float currentRotBody = 0;
 	public static float partialTicks = 0;
@@ -47,11 +48,16 @@ public class Client {
 		if (event instanceof RenderPlayerEvent.Pre) {
 			if (!drawing) {
 				renderer = event.getRenderer();
+
+//				event.getMatrixStack().translate(0,2,0);
 				
 				if (!rotX.containsKey(event.getPlayer()))
 					rotX.put(event.getPlayer(), event.getPlayer().getPitch(event.getPartialRenderTick()));
 				
 				if (!capes.containsKey(event.getPlayer())) capes.put(event.getPlayer(), 0f);
+				
+				if (!animatedPlayers.containsKey(event.getPlayer()))
+					animatedPlayers.put(event.getPlayer(), new IAnimatedPlayer(event.getPlayer()));
 				
 				event.setCanceled(event.isCancelable());
 				float xRot = rotX.get(event.getPlayer());
@@ -98,7 +104,7 @@ public class Client {
 						if (AnimatedPlayerGeoRenderer.modelsToLoad.get(new ResourceLocation("cpm", event.getPlayer().getUniqueID().toString())).startsWith("{")) {
 							AnimatedPlayerGeoRenderer.INSTANCE.render(
 									AnimatedPlayerGeoRenderer.INSTANCE.getGeoModelProvider().getModel((new ResourceLocation("cpm:" + event.getPlayer().getUniqueID().toString()))),
-									event.getPlayer(),
+									animatedPlayers.get(event.getPlayer()),
 									event.getPartialRenderTick(),
 									getRenderType(event.getRenderer(), event.getPlayer(), false, true, false),
 									event.getMatrixStack(),
@@ -133,13 +139,20 @@ public class Client {
 		ResourceLocation resourcelocation = renderer.getEntityTexture((AbstractClientPlayerEntity) p_230496_1_);
 
 //		System.out.println(resourcelocation);
+
+//		if (p_230496_1_.getName().getUnformattedComponentText().equals("Dev"))
+//			return RenderType.getEntityTranslucent(new ResourceLocation("minecraft:skins/a002e95d2c83d6f9ee5a9e9ebe03d5e901e1012c"));
 		
-		if (p_230496_1_.getName().getUnformattedComponentText().equals("Dev"))
-			return RenderType.getEntityTranslucent(new ResourceLocation("minecraft:skins/a002e95d2c83d6f9ee5a9e9ebe03d5e901e1012c"));
-		
+		if (AnimatedPlayerGeoRenderer.modelsToLoad.containsKey(new ResourceLocation("cpm", p_230496_1_.getUniqueID().toString()))) {
+			if (AnimatedPlayerGeoRenderer.modelsToLoad.get(new ResourceLocation("cpm", p_230496_1_.getUniqueID().toString())).contains("\"_texture_\":\"")) {
+				String val = AnimatedPlayerGeoRenderer.modelsToLoad.get(new ResourceLocation("cpm", p_230496_1_.getUniqueID().toString()));
+				String text = val.split("\"_texture_\":\"")[1];
+				text = text.split("\"")[0];
+				return RenderType.getEntityCutoutNoCull(new ResourceLocation(text));
+			}
+		}
 		if (p_230496_3_)
 			return RenderType.getEntityCutoutNoCull(resourcelocation);
-//			return RenderType.getEntityCutoutNoCull(new ResourceLocation("minecraft:textures/entity/phantom.png"));
 		else if (p_230496_2_)
 			return RenderType.getEntityTranslucent(resourcelocation);
 		else
@@ -168,18 +181,26 @@ public class Client {
 	public static void onTick(TickEvent.ClientTickEvent event) {
 		try {
 			if (Minecraft.getInstance().player != null && Minecraft.getInstance().world != null) {
-				File f = new File("cpm/models/active.geo.json");
+				File f = new File("cpm/models/settings.properties");
 				
 				if (!f.exists()) {
 					f.getParentFile().mkdirs();
 					f.createNewFile();
 				}
 				
-				InputStream stream = new FileInputStream(f);
+				PropertiesReader reader = new PropertiesReader(f);
+				
+				String properties = reader.getValue("ModelPointer");
+				InputStream stream = new FileInputStream(new File("cpm/models/" + properties + ".geo.json"));
 				byte[] bytes = new byte[stream.available()];
 				stream.read(bytes);
 				stream.close();
 				String newModel = new String(bytes);
+				
+				String texture = reader.getValue("TexturePointer");
+				if (texture != null) {
+					newModel = "{\"_texture_\":\"" + texture + "\"" + newModel.substring(1);
+				}
 				
 				if (!currentModel.equals(newModel)) {
 					CustomPlayerModels.INSTANCE.sendToServer(new ModelPacket(newModel, Minecraft.getInstance().player.getUniqueID()));
