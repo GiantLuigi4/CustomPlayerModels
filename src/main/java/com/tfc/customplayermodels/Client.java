@@ -216,9 +216,9 @@ public class Client {
 				}
 				newModel = newModel.replace(" ", "").replace("\t", "").replace("\n", "");
 				anim = anim.replace(" ", "").replace("\t", "").replace("\n", "");
-				currentModel = "";
+//				currentModel = "";
 				
-				if (!currentModel.equals(newModel) || true) {
+				if (!currentModel.equals(newModel)) {
 					CustomPlayerModels.INSTANCE.sendToServer(new ModelPacket(newModel, Minecraft.getInstance().player.getUniqueID(), anim));
 					currentModel = newModel;
 				}
