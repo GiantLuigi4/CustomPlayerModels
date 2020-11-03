@@ -3,6 +3,7 @@ package com.tfc.customplayermodels;
 import net.minecraft.util.ResourceLocation;
 import software.bernie.geckolib.core.IAnimatable;
 import software.bernie.geckolib.core.builder.Animation;
+import software.bernie.geckolib.core.processor.IBone;
 import software.bernie.geckolib.geo.render.built.GeoModel;
 import software.bernie.geckolib.model.AnimatedGeoModel;
 
@@ -37,6 +38,11 @@ public class AnimatedPlayerGeoModel extends AnimatedGeoModel<AnimatedPlayer> {
 	
 	public void setAnimation(Animation anim) {
 		this.anim = anim;
+	}
+	
+	@Override
+	public IBone getBone(String boneName) {
+		return model.getBone(boneName).get();
 	}
 	
 	public void setModel(GeoModel model) {

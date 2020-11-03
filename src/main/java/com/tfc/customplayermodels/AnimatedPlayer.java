@@ -71,7 +71,7 @@ public class AnimatedPlayer implements IAnimatable {
 		return factory;
 	}
 	
-	private <E extends IAnimatable> PlayState predicate(AnimationEvent<E> event) {
+	public <E extends IAnimatable> PlayState predicate(AnimationEvent<E> event) {
 		event.getController().setAnimation(new AnimationBuilder().addAnimation("animation.idle", true));
 		return PlayState.CONTINUE;
 	}

@@ -25,13 +25,19 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.vector.*;
 import software.bernie.geckolib.core.controller.AnimationController;
+import software.bernie.geckolib.core.event.predicate.AnimationEvent;
+import software.bernie.geckolib.core.keyframe.BoneAnimationQueue;
+import software.bernie.geckolib.core.keyframe.KeyFrame;
 import software.bernie.geckolib.core.processor.IBone;
 import software.bernie.geckolib.core.snapshot.BoneSnapshot;
 import software.bernie.geckolib.file.GeoModelLoader;
 import software.bernie.geckolib.geo.render.built.*;
 import software.bernie.geckolib.model.provider.GeoModelProvider;
 import software.bernie.geckolib.renderers.geo.IGeoRenderer;
+import software.bernie.geckolib.resource.GeckoLibCache;
 import software.bernie.geckolib.util.RenderUtils;
+import software.bernie.shadowed.eliotlash.mclib.math.IValue;
+import software.bernie.shadowed.eliotlash.molang.expressions.MolangValue;
 
 import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
@@ -210,58 +216,32 @@ public class AnimatedPlayerGeoRenderer<T extends AnimatedPlayer> implements IGeo
 		stackIn.pop();
 	}
 	
-	private void toIBoneArray(GeoBone bone, ArrayList<IBone> allBones, HashMap<IBone, BoneSnapshot> snapshotHashMap) {
-		for (GeoBone bone1 : bone.childBones) {
-			toIBoneArray(bone1, allBones, snapshotHashMap);
-			allBones.add(bone1);
-			if (!snapshotHashMap.containsKey(bone1))
-				snapshotHashMap.put(bone1, bone1.getInitialSnapshot());
-//			else
-//				snapshotHashMap.replace(bone1,bone1.getInitialSnapshot());
-		}
+	private static float lerpAnimPoint(KeyFrame<IValue> frame) throws Exception {
+		IValue start = frame.getStartValue();
+		IValue end = frame.getEndValue();
+		float startVal;
+		float endVal;
+		if (start instanceof MolangValue)
+			startVal = (float) -GeckoLibCache.getInstance().parser.parse(start.toString()).get();
+		else startVal = -(float) start.get();
+		if (end instanceof MolangValue)
+			endVal = (float) -GeckoLibCache.getInstance().parser.parse(end.toString()).get();
+		else endVal = -(float) start.get();
+		return MathHelper.lerp(Minecraft.getInstance().getRenderPartialTicks(), startVal, endVal);
 	}
 	
-	public void render(GeoModel model, T animatable, float partialTicks, RenderType type, MatrixStack matrixStackIn, @Nullable IRenderTypeBuffer renderTypeBuffer, @Nullable IVertexBuilder vertexBuilder, int packedLightIn, int packedOverlayIn, float red, float green, float blue, float alpha) {
-		matrixStackIn.push();
-
-//		System.out.println(model.getClass());
-		
-		AnimationController<T> controller = (AnimationController<T>) animatable.getFactory().getOrCreateAnimationData(animatable.getUniqueID().hashCode()).getAnimationControllers().get("controller");
-		try {
-			animatedPlayerGeoModel.setModel(model);
-			animatedPlayerGeoModel.setAnimation(controller.getCurrentAnimation());
-			animatedPlayerGeoModel.setLivingAnimations(animatable, animatable.getUniqueID().hashCode());
-		} catch (Throwable ignored) {
-			StringBuilder errStr = new StringBuilder();
-			errStr.append(ignored.getMessage()).append("\n");
-			for (StackTraceElement element : ignored.getStackTrace()) {
-				errStr.append(element.toString()).append("\n");
-			}
-			System.out.println(errStr.toString());
+	private void toIBoneArray(GeoBone bone, ArrayList<IBone> bones, HashMap<IBone, BoneSnapshot> snapshotCollection, HashMap<String, BoneAnimationQueue> boneAnimationQueueHashMap) {
+		for (GeoBone bone1 : bone.childBones) {
+			bones.add(bone1);
+			toIBoneArray(bone1, bones, snapshotCollection, boneAnimationQueueHashMap);
+			animatedPlayerGeoModel.getAnimationProcessor().registerModelRenderer(bone1);
+//			System.out.println(bone.name);
+//			System.out.println(bone.name.equals("wing_l_pt_1"));
+			if (!snapshotCollection.containsKey(bone1))
+				snapshotCollection.put(bone1, bone1.getInitialSnapshot());
+			if (!boneAnimationQueueHashMap.containsKey(bone1.name))
+				boneAnimationQueueHashMap.put(bone1.name, new BoneAnimationQueue(bone1));
 		}
-
-//		HashMap<IBone,BoneSnapshot> snapshotHashMap = new HashMap<>();
-//		for (GeoBone bone : model.topLevelBones) toIBoneArray(bone,bones,snapshotHashMap);
-
-//		controller.process(1,event,bones,snapshotHashMap,new MolangParser(),false);
-		
-		if (animatable.isElytraFlying()) {
-//			matrixStackIn.rotate(new Quaternion(0,-180+animatable.getYaw(partialTicks),0,true));
-			matrixStackIn.rotate(new Quaternion(-90 - animatable.getPitch(partialTicks), 0, 0, true));
-//			matrixStackIn.rotate(new Quaternion(0,0,180-animatable.getYaw(partialTicks),true));
-		}
-		
-		this.renderEarly(animatable, matrixStackIn, partialTicks, renderTypeBuffer, vertexBuilder, packedLightIn, packedOverlayIn, red, green, blue, alpha);
-		
-		this.renderLate(model, animatable, matrixStackIn, partialTicks, renderTypeBuffer, vertexBuilder, packedLightIn, packedOverlayIn, red, green, blue, alpha);
-		
-		if (vertexBuilder == null)
-			vertexBuilder = renderTypeBuffer.getBuffer(type);
-		
-		for (GeoBone group : model.topLevelBones)
-			this.renderRecursively(group, animatable, matrixStackIn, vertexBuilder, packedLightIn, packedOverlayIn, red, green, blue, alpha);
-		
-		matrixStackIn.pop();
 	}
 	
 	public void renderRecursively(GeoBone bone, T animatable, MatrixStack stack, IVertexBuilder bufferIn, int packedLightIn, int packedOverlayIn, float red, float green, float blue, float alpha) {
@@ -292,6 +272,68 @@ public class AnimatedPlayerGeoRenderer<T extends AnimatedPlayer> implements IGeo
 		}
 		
 		stack.pop();
+	}
+	
+	public void render(GeoModel model, T animatable, float partialTicks, RenderType type, MatrixStack matrixStackIn, @Nullable IRenderTypeBuffer renderTypeBuffer, @Nullable IVertexBuilder vertexBuilder, int packedLightIn, int packedOverlayIn, float red, float green, float blue, float alpha) {
+		matrixStackIn.push();
+		
+		AnimationController<T> controller = (AnimationController<T>) animatable.getFactory().getOrCreateAnimationData(animatable.getUniqueID().hashCode()).getAnimationControllers().get("controller");
+//		controller.setAnimation(new AnimationBuilder().addAnimation("animation.idle", true));
+		try {
+			AnimationEvent<T> event = new AnimationEvent<T>(animatable, animatable.getPlayer().limbSwing, animatable.getPlayer().limbSwingAmount, partialTicks, false, new ArrayList<>());
+			event.setController(controller);
+			
+			ArrayList<IBone> boneArray = new ArrayList<>();
+//			boneArray.clear();
+			HashMap<IBone, BoneSnapshot> snapshotCollection = animatable.getFactory().getOrCreateAnimationData(animatable.getUniqueID().hashCode()).getBoneSnapshotCollection();
+			
+			snapshotCollection.clear();
+			controller.getBoneAnimationQueues().clear();
+			
+			animatedPlayerGeoModel.getAnimationProcessor().clearModelRendererList();
+			for (GeoBone bone : model.topLevelBones)
+				toIBoneArray(bone, boneArray, snapshotCollection, controller.getBoneAnimationQueues());
+			controller.process(animatable.getPlayer().ticksExisted + partialTicks, event, boneArray, snapshotCollection, GeckoLibCache.getInstance().parser, true);
+
+//			animatedPlayerGeoModel.setModel(model);
+//			animatedPlayerGeoModel.setAnimation(controller.getCurrentAnimation());
+//			animatedPlayerGeoModel.getAnimationProcessor().reloadAnimations=true;
+//			animatedPlayerGeoModel.setMolangQueries(animatable,animatable.getPlayer().ticksExisted);
+//			animatedPlayerGeoModel.setLivingAnimations(animatable, animatable.getUniqueID().hashCode(), event);
+//			animatedPlayerGeoModel.getAnimationProcessor().tickAnimation(
+//					animatable, animatable.getUniqueID().hashCode(), animatable.getPlayer().ticksExisted, event, GeckoLibCache.getInstance().parser, true
+//			);
+		} catch (Throwable ignored) {
+			StringBuilder errStr = new StringBuilder();
+			errStr.append(ignored.getMessage()).append("\n");
+			for (StackTraceElement element : ignored.getStackTrace()) {
+				errStr.append(element.toString()).append("\n");
+			}
+			System.out.println(errStr.toString());
+		}
+
+		
+		if (animatable.isElytraFlying()) {
+//			matrixStackIn.rotate(new Quaternion(0,-180+animatable.getYaw(partialTicks),0,true));
+			matrixStackIn.rotate(new Quaternion(-90 - animatable.getPitch(partialTicks), 0, 0, true));
+//			matrixStackIn.rotate(new Quaternion(0,0,180-animatable.getYaw(partialTicks),true));
+		}
+		
+		this.renderEarly(animatable, matrixStackIn, partialTicks, renderTypeBuffer, vertexBuilder, packedLightIn, packedOverlayIn, red, green, blue, alpha);
+		
+		this.renderLate(model, animatable, matrixStackIn, partialTicks, renderTypeBuffer, vertexBuilder, packedLightIn, packedOverlayIn, red, green, blue, alpha);
+		
+		if (vertexBuilder == null)
+			vertexBuilder = renderTypeBuffer.getBuffer(type);
+		
+		for (GeoBone group : model.topLevelBones)
+			try {
+				this.renderRecursively((GeoBone) (animatedPlayerGeoModel.getBone(group.name)), animatable, matrixStackIn, vertexBuilder, packedLightIn, packedOverlayIn, red, green, blue, alpha);
+			} catch (Throwable err) {
+				this.renderRecursively(group, animatable, matrixStackIn, vertexBuilder, packedLightIn, packedOverlayIn, red, green, blue, alpha);
+			}
+		
+		matrixStackIn.pop();
 	}
 	
 	public void renderLateBones(GeoBone bone, T animatable, MatrixStack stackIn, float ticks, IRenderTypeBuffer renderTypeBuffer, IVertexBuilder bufferIn, int packedLightIn, int packedOverlayIn, float red, float green, float blue, float partialTicks) {
@@ -330,7 +372,7 @@ public class AnimatedPlayerGeoRenderer<T extends AnimatedPlayer> implements IGeo
 			Minecraft.getInstance().getItemRenderer().renderItem(itemStack, ItemCameraTransforms.TransformType.THIRD_PERSON_RIGHT_HAND, packedLightIn, packedOverlayIn, stackIn, renderTypeBuffer);
 		} else if (bone.name.startsWith("equipment_handle_l")) {
 			ItemStack itemStack = animatable.getHeldItem(Hand.OFF_HAND);
-			Minecraft.getInstance().getItemRenderer().renderItem(itemStack, ItemCameraTransforms.TransformType.THIRD_PERSON_RIGHT_HAND, packedLightIn, packedOverlayIn, stackIn, renderTypeBuffer);
+			Minecraft.getInstance().getItemRenderer().renderItem(itemStack, ItemCameraTransforms.TransformType.THIRD_PERSON_LEFT_HAND, packedLightIn, packedOverlayIn, stackIn, renderTypeBuffer);
 		} else if (bone.name.startsWith("nametag_handle") && !Minecraft.getInstance().gameSettings.hideGUI) {
 			if (bone.name.endsWith("_self")) {
 				if (animatable.getUniqueID().equals(Minecraft.getInstance().player.getUniqueID())) {
@@ -368,10 +410,31 @@ public class AnimatedPlayerGeoRenderer<T extends AnimatedPlayer> implements IGeo
 		float limbSwingAmount = MathHelper.lerp(Minecraft.getInstance().getRenderPartialTicks(), animatable.getPlayer().prevLimbSwingAmount, animatable.getPlayer().limbSwingAmount);
 		float attackSwing = MathHelper.lerp(Minecraft.getInstance().getRenderPartialTicks(), animatable.getPlayer().prevSwingProgress, animatable.getPlayer().swingProgress);
 		
-		BoneSnapshot snapshot = animatable.getFactory().getOrCreateAnimationData(animatable.getUniqueID().hashCode()).getBoneSnapshotCollection().get(bone);
+		BoneAnimationQueue queue = (BoneAnimationQueue) animatable.getFactory().getOrCreateAnimationData(animatable.getUniqueID().hashCode()).getAnimationControllers().get("controller").getBoneAnimationQueues().get(bone.getName());
 		
-		if (snapshot != null) {
-			stack.rotate(new Quaternion(snapshot.rotationValueX, snapshot.rotationValueY, snapshot.rotationValueZ, false));
+		try {
+			if (queue != null) {
+				if (!queue.positionXQueue.isEmpty()) {
+					float xRot = -lerpAnimPoint(queue.positionXQueue.getFirst().keyframe);
+					float yRot = -lerpAnimPoint(queue.positionYQueue.getFirst().keyframe);
+					float zRot = -lerpAnimPoint(queue.positionZQueue.getFirst().keyframe);
+					stack.translate(xRot, yRot, zRot);
+				}
+				if (!queue.rotationXQueue.isEmpty()) {
+					float xRot = lerpAnimPoint(queue.rotationXQueue.getFirst().keyframe);
+					float yRot = lerpAnimPoint(queue.rotationYQueue.getFirst().keyframe);
+					float zRot = lerpAnimPoint(queue.rotationZQueue.getFirst().keyframe);
+					stack.rotate(new Quaternion(xRot, yRot, zRot, true));
+				}
+				if (!queue.scaleXQueue.isEmpty()) {
+					float xRot = lerpAnimPoint(queue.scaleXQueue.getFirst().keyframe);
+					float yRot = lerpAnimPoint(queue.scaleYQueue.getFirst().keyframe);
+					float zRot = lerpAnimPoint(queue.scaleZQueue.getFirst().keyframe);
+					stack.scale(xRot, yRot, zRot);
+				}
+			}
+		} catch (Throwable err) {
+			err.printStackTrace();
 		}
 		
 		Vector3d motion = animatable.getPositionVec().subtract(new Vector3d(animatable.getPlayer().prevPosX, animatable.getPlayer().prevPosY, animatable.getPlayer().prevPosZ));
