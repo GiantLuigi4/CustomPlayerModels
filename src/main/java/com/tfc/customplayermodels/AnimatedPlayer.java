@@ -18,7 +18,7 @@ import software.bernie.geckolib.core.manager.AnimationData;
 import software.bernie.geckolib.core.manager.AnimationFactory;
 import software.bernie.geckolib.core.processor.AnimationProcessor;
 import software.bernie.geckolib.file.AnimationFileLoader;
-import software.bernie.shadowed.eliotlash.molang.MolangParser;
+import software.bernie.geckolib.resource.GeckoLibCache;
 
 import java.util.UUID;
 
@@ -52,8 +52,14 @@ public class AnimatedPlayer implements IAnimatable {
 				@Override
 				public Animation getAnimation(String s, IAnimatable iAnimatable) {
 					try {
-						return new AnimationFileLoader().loadAllAnimations(new MolangParser(), new ResourceLocation("cpm:animation/" + ((AnimatedPlayer) animatable).getUniqueID().hashCode() + ".animation.json"), AnimatedPlayerGeoRenderer.INSTANCE).getAnimation(s);
+						return new AnimationFileLoader().loadAllAnimations(GeckoLibCache.getInstance().parser, new ResourceLocation("cpm:animation/" + ((AnimatedPlayer) animatable).getUniqueID().hashCode() + ".animation.json"), AnimatedPlayerGeoRenderer.INSTANCE).getAnimation(s);
 					} catch (Throwable ignored) {
+//						StringBuilder errStr = new StringBuilder();
+//						errStr.append(ignored.getMessage()).append("\n");
+//						for (StackTraceElement element : ignored.getStackTrace()) {
+//							errStr.append(element.toString()).append("\n");
+//						}
+//						System.out.println(errStr.toString());
 						return null;
 					}
 				}

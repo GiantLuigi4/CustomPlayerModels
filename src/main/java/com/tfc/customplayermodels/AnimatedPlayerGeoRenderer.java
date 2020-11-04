@@ -155,6 +155,29 @@ public class AnimatedPlayerGeoRenderer<T extends AnimatedPlayer> implements IGeo
 		return null;
 	}
 	
+	private static float lerpAnimPoint(KeyFrame<IValue> frame) throws Exception {
+		IValue start = frame.getStartValue();
+		IValue end = frame.getEndValue();
+		float startVal;
+		float endVal;
+		if (start instanceof MolangValue)
+			startVal = (float) -GeckoLibCache.getInstance().parser.parse(start.toString()).get();
+		else startVal = -(float) start.get();
+		if (end instanceof MolangValue)
+			endVal = (float) -GeckoLibCache.getInstance().parser.parse(end.toString()).get();
+		else endVal = -(float) start.get();
+		return (float) Math.toRadians(MathHelper.lerp(Minecraft.getInstance().getRenderPartialTicks(), startVal, endVal));
+	}
+	
+	public void renderLate(GeoModel model, T animatable, MatrixStack stackIn, float ticks, IRenderTypeBuffer renderTypeBuffer, IVertexBuilder bufferIn, int packedLightIn, int packedOverlayIn, float red, float green, float blue, float partialTicks) {
+		stackIn.push();
+		
+		for (GeoBone group : model.topLevelBones)
+			renderLateBones(group, animatable, stackIn, ticks, renderTypeBuffer, bufferIn, packedLightIn, packedOverlayIn, red, green, blue, partialTicks);
+		
+		stackIn.pop();
+	}
+	
 	@Override
 	public IResource getResource(ResourceLocation resourceLocationIn) {
 		return new IResource() {
@@ -167,6 +190,11 @@ public class AnimatedPlayerGeoRenderer<T extends AnimatedPlayer> implements IGeo
 			
 			@Override
 			public InputStream getInputStream() {
+				try {
+					for (InputStream stream : streams) stream.close();
+				} catch (IOException ignored) {
+				}
+				streams.clear();
 //				InputStream stream = new ByteArrayInputStream(("{\n\t\"format_version\": \"1.12.0\",\n\t\"minecraft:geometry\": [\n\t\t{\n\t\t\t\"description\": {\n\t\t\t\t\"identifier\": \"geometry.unknown\",\n\t\t\t\t\"texture_width\": 64,\n\t\t\t\t\"texture_height\": 64,\n\t\t\t\t\"visible_bounds_width\": 4,\n\t\t\t\t\"visible_bounds_height\": 4.5,\n\t\t\t\t\"visible_bounds_offset\": [0, 1.75, 0]\n\t\t\t},\n\t\t\t\"bones\": [\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"body\",\n\t\t\t\t\t\"pivot\": [0, 22, 0],\n\t\t\t\t\t\"cubes\": [\n\t\t\t\t\t\t{\"origin\": [-8, 15, -8], \"size\": [16, 14, 16], \"uv\": [0, 34]}\n\t\t\t\t\t]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"cape_handle2\",\n\t\t\t\t\t\"parent\": \"body\",\n\t\t\t\t\t\"pivot\": [0, 28, 13.5]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"body2\",\n\t\t\t\t\t\"parent\": \"body\",\n\t\t\t\t\t\"pivot\": [0, 29, 0],\n\t\t\t\t\t\"cubes\": [\n\t\t\t\t\t\t{\"origin\": [-5, 29, -5], \"size\": [10, 10, 10], \"uv\": [0, 0]}\n\t\t\t\t\t]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"cape_handle\",\n\t\t\t\t\t\"parent\": \"body2\",\n\t\t\t\t\t\"pivot\": [0, 38, 7.5]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"head\",\n\t\t\t\t\t\"parent\": \"body2\",\n\t\t\t\t\t\"pivot\": [0, 39, 0],\n\t\t\t\t\t\"cubes\": [\n\t\t\t\t\t\t{\"origin\": [-4, 39, -4], \"size\": [8, 8, 8], \"uv\": [32, 18]}\n\t\t\t\t\t]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"left_arm\",\n\t\t\t\t\t\"parent\": \"body\",\n\t\t\t\t\t\"pivot\": [8, 28, 0],\n\t\t\t\t\t\"rotation\": [0, 0, 45],\n\t\t\t\t\t\"cubes\": [\n\t\t\t\t\t\t{\"origin\": [8, 27, -1], \"size\": [12, 2, 2], \"uv\": [30, 0]}\n\t\t\t\t\t]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"right_arm\",\n\t\t\t\t\t\"parent\": \"body\",\n\t\t\t\t\t\"pivot\": [-8, 28, 0],\n\t\t\t\t\t\"rotation\": [0, 0, -45],\n\t\t\t\t\t\"cubes\": [\n\t\t\t\t\t\t{\"origin\": [-20, 27, -1], \"size\": [12, 2, 2], \"uv\": [30, 0], \"mirror\": true}\n\t\t\t\t\t]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"left_leg\",\n\t\t\t\t\t\"pivot\": [4, 15, 0],\n\t\t\t\t\t\"cubes\": [\n\t\t\t\t\t\t{\"origin\": [2, 0, -2], \"size\": [4, 17, 4], \"uv\": [0, 29]}\n\t\t\t\t\t]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"right_leg\",\n\t\t\t\t\t\"pivot\": [-4, 15, 0],\n\t\t\t\t\t\"cubes\": [\n\t\t\t\t\t\t{\"origin\": [-6, 0, -2], \"size\": [4, 17, 4], \"uv\": [0, 29], \"mirror\": true}\n\t\t\t\t\t]\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}").getBytes());
 //				InputStream stream = new ByteArrayInputStream(("{\n\t\"format_version\": \"1.12.0\",\n\t\"minecraft:geometry\": [\n\t\t{\n\t\t\t\"description\": {\n\t\t\t\t\"identifier\": \"geometry.unknown\",\n\t\t\t\t\"texture_width\": 64,\n\t\t\t\t\"texture_height\": 64,\n\t\t\t\t\"visible_bounds_width\": 3,\n\t\t\t\t\"visible_bounds_height\": 4.5,\n\t\t\t\t\"visible_bounds_offset\": [0, 1.75, 0]\n\t\t\t},\n\t\t\t\"bones\": [\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"standing\",\n\t\t\t\t\t\"pivot\": [0, 0, 0]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"body\",\n\t\t\t\t\t\"parent\": \"standing\",\n\t\t\t\t\t\"pivot\": [0, 0, 0]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"head\",\n\t\t\t\t\t\"parent\": \"body\",\n\t\t\t\t\t\"pivot\": [0, 24, 0],\n\t\t\t\t\t\"cubes\": [\n\t\t\t\t\t\t{\"origin\": [-4, 24, -4], \"size\": [8, 8, 8], \"uv\": [0, 0]},\n\t\t\t\t\t\t{\"origin\": [-4, 24, -4], \"size\": [8, 8, 8], \"inflate\": 0.5, \"uv\": [32, 0]}\n\t\t\t\t\t]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"equipment_handle_head\",\n\t\t\t\t\t\"parent\": \"head\",\n\t\t\t\t\t\"pivot\": [0, 24, 0]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"torso\",\n\t\t\t\t\t\"parent\": \"body\",\n\t\t\t\t\t\"pivot\": [0, 18.5, 0],\n\t\t\t\t\t\"cubes\": [\n\t\t\t\t\t\t{\"origin\": [-4, 12, -2], \"size\": [8, 12, 4], \"uv\": [16, 16]},\n\t\t\t\t\t\t{\"origin\": [-4, 12, -2], \"size\": [8, 12, 4], \"inflate\": 0.25, \"uv\": [16, 32]}\n\t\t\t\t\t]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"cape_handle\",\n\t\t\t\t\t\"parent\": \"torso\",\n\t\t\t\t\t\"pivot\": [0, 23, 0.9]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"equipment_handle_chest\",\n\t\t\t\t\t\"parent\": \"torso\",\n\t\t\t\t\t\"pivot\": [0, 18.5, 0]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"arms\",\n\t\t\t\t\t\"parent\": \"body\",\n\t\t\t\t\t\"pivot\": [-3, 22.5, 0]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"right_arm\",\n\t\t\t\t\t\"parent\": \"arms\",\n\t\t\t\t\t\"pivot\": [-3, 22.5, 0],\n\t\t\t\t\t\"cubes\": [\n\t\t\t\t\t\t{\"origin\": [-8, 12, -2], \"size\": [4, 12, 4], \"uv\": [40, 16]},\n\t\t\t\t\t\t{\"origin\": [-8, 12, -2], \"size\": [4, 12, 4], \"inflate\": 0.25, \"uv\": [40, 32]}\n\t\t\t\t\t]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"equipment_handle_r\",\n\t\t\t\t\t\"parent\": \"right_arm\",\n\t\t\t\t\t\"pivot\": [-6, 12, -2],\n\t\t\t\t\t\"rotation\": [90, 0, 0]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"left_arm\",\n\t\t\t\t\t\"parent\": \"arms\",\n\t\t\t\t\t\"pivot\": [3, 22.5, 0],\n\t\t\t\t\t\"cubes\": [\n\t\t\t\t\t\t{\"origin\": [4, 12, -2], \"size\": [4, 12, 4], \"uv\": [32, 48]},\n\t\t\t\t\t\t{\"origin\": [4, 12, -2], \"size\": [4, 12, 4], \"inflate\": 0.25, \"uv\": [48, 48]}\n\t\t\t\t\t]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"equipment_handle_l\",\n\t\t\t\t\t\"parent\": \"left_arm\",\n\t\t\t\t\t\"pivot\": [6, 21, -2],\n\t\t\t\t\t\"rotation\": [90, 0, 180]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"legs\",\n\t\t\t\t\t\"parent\": \"body\",\n\t\t\t\t\t\"pivot\": [0, 12.25, 0]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"equipment_handle_feet\",\n\t\t\t\t\t\"parent\": \"legs\",\n\t\t\t\t\t\"pivot\": [0, 12, 0]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"equipment_handle_pants\",\n\t\t\t\t\t\"parent\": \"legs\",\n\t\t\t\t\t\"pivot\": [0, 12, 0]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"right_leg\",\n\t\t\t\t\t\"parent\": \"legs\",\n\t\t\t\t\t\"pivot\": [-2, 12.25, 0],\n\t\t\t\t\t\"cubes\": [\n\t\t\t\t\t\t{\"origin\": [-3.9, 0, -2], \"size\": [4, 12, 4], \"inflate\": 0.25, \"uv\": [0, 32]},\n\t\t\t\t\t\t{\"origin\": [-3.9, 0, -2], \"size\": [4, 12, 4], \"uv\": [0, 16]}\n\t\t\t\t\t]\n\t\t\t\t},\n\t\t\t\t{\n\t\t\t\t\t\"name\": \"left_leg\",\n\t\t\t\t\t\"parent\": \"legs\",\n\t\t\t\t\t\"pivot\": [2, 12.25, 0],\n\t\t\t\t\t\"cubes\": [\n\t\t\t\t\t\t{\"origin\": [-0.1, 0, -2], \"size\": [4, 12, 4], \"uv\": [16, 48]},\n\t\t\t\t\t\t{\"origin\": [-0.1, 0, -2], \"size\": [4, 12, 4], \"inflate\": 0.25, \"uv\": [0, 48]}\n\t\t\t\t\t]\n\t\t\t\t}\n\t\t\t]\n\t\t}\n\t]\n}").getBytes());
 //				InputStream stream = new ByteArrayInputStream(("{\"format_version\":\"1.12.0\",\"minecraft:geometry\":[{\"description\":{\"identifier\":\"geometry.unknown\",\"texture_width\":64,\"texture_height\":64,\"visible_bounds_width\":5,\"visible_bounds_height\":1.5,\"visible_bounds_offset\":[0,0.25,0]},\"bones\":[{\"name\":\"model\",\"pivot\":[0,0,-2]},{\"name\":\"body\",\"parent\":\"model\",\"pivot\":[-1,3.5,-5],\"rotation\":[-5,0,0],\"cubes\":[{\"origin\":[-3,0.5,-5],\"size\":[5,3,9],\"uv\":[0,8]}]},{\"name\":\"cape_handle\",\"parent\":\"body\",\"pivot\":[-0.5,2.5,-4.25],\"rotation\":[87.5,0,0]},{\"name\":\"wing_l_pt_1\",\"parent\":\"body\",\"pivot\":[-3,3.5,-0.5],\"cubes\":[{\"origin\":[-9,1.5,-5],\"size\":[6,2,9],\"uv\":[23,12],\"mirror\":true}]},{\"name\":\"wing_l_pt_2\",\"parent\":\"wing_l_pt_1\",\"pivot\":[-9,3.5,-0.5],\"cubes\":[{\"origin\":[-22,2.5,-5],\"size\":[13,1,9],\"uv\":[16,24],\"mirror\":true}]},{\"name\":\"equipment_handle_l\",\"parent\":\"wing_l_pt_2\",\"pivot\":[-20,1,-1],\"rotation\":[90,0,0]},{\"name\":\"wing_r_pt_1\",\"parent\":\"body\",\"pivot\":[2,3.5,-0.5],\"cubes\":[{\"origin\":[2,1.5,-5],\"size\":[6,2,9],\"uv\":[23,12]}]},{\"name\":\"wing_r_pt_2\",\"parent\":\"wing_r_pt_1\",\"pivot\":[8,3.5,-0.5],\"cubes\":[{\"origin\":[8,2.5,-5],\"size\":[13,1,9],\"uv\":[16,24]}]},{\"name\":\"equipment_handle_r\",\"parent\":\"wing_r_pt_2\",\"pivot\":[20,1,-1],\"rotation\":[90,0,0]},{\"name\":\"tail1\",\"parent\":\"body\",\"pivot\":[-0.5,3.52619,3.93784],\"cubes\":[{\"origin\":[-2,1.5,3.94396],\"size\":[3,2,6],\"uv\":[3,20]}]},{\"name\":\"tail2\",\"parent\":\"tail1\",\"pivot\":[-0.5,3.30198,9.98038],\"cubes\":[{\"origin\":[-1,2.27579,9.9865],\"size\":[1,1,6],\"uv\":[4,29]}]},{\"name\":\"head\",\"parent\":\"body\",\"pivot\":[-0.5,1.0982,-4.37736],\"rotation\":[10,0,0],\"cubes\":[{\"origin\":[-4,0.09536,-9.31199],\"size\":[7,3,5],\"uv\":[0,0]}]}]}]}").getBytes());
@@ -181,8 +209,6 @@ public class AnimatedPlayerGeoRenderer<T extends AnimatedPlayer> implements IGeo
 					streams.add(stream);
 					return stream;
 				} else {
-//					System.out.println(resourceLocationIn);
-//					System.out.println(modelsToLoad.toString());
 					InputStream stream = new ByteArrayInputStream((modelsToLoad.get(resourceLocationIn)).getBytes());
 					streams.add(stream);
 					return stream;
@@ -207,36 +233,11 @@ public class AnimatedPlayerGeoRenderer<T extends AnimatedPlayer> implements IGeo
 		};
 	}
 	
-	public void renderLate(GeoModel model, T animatable, MatrixStack stackIn, float ticks, IRenderTypeBuffer renderTypeBuffer, IVertexBuilder bufferIn, int packedLightIn, int packedOverlayIn, float red, float green, float blue, float partialTicks) {
-		stackIn.push();
-		
-		for (GeoBone group : model.topLevelBones)
-			renderLateBones(group, animatable, stackIn, ticks, renderTypeBuffer, bufferIn, packedLightIn, packedOverlayIn, red, green, blue, partialTicks);
-		
-		stackIn.pop();
-	}
-	
-	private static float lerpAnimPoint(KeyFrame<IValue> frame) throws Exception {
-		IValue start = frame.getStartValue();
-		IValue end = frame.getEndValue();
-		float startVal;
-		float endVal;
-		if (start instanceof MolangValue)
-			startVal = (float) -GeckoLibCache.getInstance().parser.parse(start.toString()).get();
-		else startVal = -(float) start.get();
-		if (end instanceof MolangValue)
-			endVal = (float) -GeckoLibCache.getInstance().parser.parse(end.toString()).get();
-		else endVal = -(float) start.get();
-		return MathHelper.lerp(Minecraft.getInstance().getRenderPartialTicks(), startVal, endVal);
-	}
-	
 	private void toIBoneArray(GeoBone bone, ArrayList<IBone> bones, HashMap<IBone, BoneSnapshot> snapshotCollection, HashMap<String, BoneAnimationQueue> boneAnimationQueueHashMap) {
 		for (GeoBone bone1 : bone.childBones) {
 			bones.add(bone1);
 			toIBoneArray(bone1, bones, snapshotCollection, boneAnimationQueueHashMap);
 			animatedPlayerGeoModel.getAnimationProcessor().registerModelRenderer(bone1);
-//			System.out.println(bone.name);
-//			System.out.println(bone.name.equals("wing_l_pt_1"));
 			if (!snapshotCollection.containsKey(bone1))
 				snapshotCollection.put(bone1, bone1.getInitialSnapshot());
 			if (!boneAnimationQueueHashMap.containsKey(bone1.name))
@@ -284,7 +285,6 @@ public class AnimatedPlayerGeoRenderer<T extends AnimatedPlayer> implements IGeo
 			event.setController(controller);
 			
 			ArrayList<IBone> boneArray = new ArrayList<>();
-//			boneArray.clear();
 			HashMap<IBone, BoneSnapshot> snapshotCollection = animatable.getFactory().getOrCreateAnimationData(animatable.getUniqueID().hashCode()).getBoneSnapshotCollection();
 			
 			snapshotCollection.clear();
@@ -424,7 +424,7 @@ public class AnimatedPlayerGeoRenderer<T extends AnimatedPlayer> implements IGeo
 					float xRot = lerpAnimPoint(queue.rotationXQueue.getFirst().keyframe);
 					float yRot = lerpAnimPoint(queue.rotationYQueue.getFirst().keyframe);
 					float zRot = lerpAnimPoint(queue.rotationZQueue.getFirst().keyframe);
-					stack.rotate(new Quaternion(xRot, yRot, zRot, true));
+					stack.rotate(new Quaternion(xRot, yRot, zRot, false));
 				}
 				if (!queue.scaleXQueue.isEmpty()) {
 					float xRot = lerpAnimPoint(queue.scaleXQueue.getFirst().keyframe);

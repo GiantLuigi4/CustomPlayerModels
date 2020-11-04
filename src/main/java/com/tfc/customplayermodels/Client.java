@@ -192,13 +192,13 @@ public class Client {
 				
 				PropertiesReader reader = new PropertiesReader(f);
 				
-				String properties = reader.getValue("ModelPointer");
-				InputStream stream = new FileInputStream(new File("cpm/models/" + properties + ".geo.json"));
+				String mdlPointer = reader.getValue("ModelPointer");
+				InputStream stream = new FileInputStream(new File("cpm/models/" + mdlPointer + ".geo.json"));
 				byte[] bytes = new byte[stream.available()];
 				stream.read(bytes);
 				stream.close();
 				String newModel = new String(bytes);
-				File f1 = new File("cpm/models/" + properties + ".animation.json");
+				File f1 = new File("cpm/models/" + mdlPointer + ".animation.json");
 				String anim;
 				if (f1.exists()) {
 					InputStream stream1 = new FileInputStream(f1);
